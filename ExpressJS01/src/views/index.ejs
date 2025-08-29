@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 40px 20px;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .message {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+        .user-info {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        .api-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 40px;
+        }
+        .api-link {
+            background: rgba(255,255,255,0.2);
+            padding: 15px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .api-link:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        .status {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 20px 0;
+            border: 1px solid rgba(76, 175, 80, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><%= title %></h1>
+        <p class="message"><%= message %></p>
+        
+        <div class="status">
+            ✅ Backend API is running successfully!
+        </div>
+
+        <% if (user) { %>
+            <div class="user-info">
+                <h3>Welcome back, <%= user.fullName %>!</h3>
+                <p><strong>Username:</strong> <%= user.username %></p>
+                <p><strong>Email:</strong> <%= user.email %></p>
+                <p><strong>Role:</strong> <%= user.role %></p>
+            </div>
+        <% } else { %>
+            <div class="user-info">
+                <h3>Not logged in</h3>
+                <p>Please login or register to access protected features</p>
+            </div>
+        <% } %>
+
+        <div class="api-links">
+            <a href="/v1/api/register" class="api-link">📝 Register API</a>
+            <a href="/v1/api/login" class="api-link">🔐 Login API</a>
+            <a href="/v1/api/profile" class="api-link">👤 Profile API</a>
+            <a href="/v1/api/users" class="api-link">👥 Users API</a>
+        </div>
+
+        <div style="margin-top: 40px; opacity: 0.7;">
+            <p>🚀 FullStack NodeJS Application with ExpressJS + MongoDB</p>
+            <p>Built with ❤️ using modern web technologies</p>
+        </div>
+    </div>
+</body>
+</html>
