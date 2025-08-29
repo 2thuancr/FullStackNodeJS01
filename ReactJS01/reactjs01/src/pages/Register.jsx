@@ -1,9 +1,8 @@
 import React from 'react';
-import { Form, Input, Button, Card, Typography, Space, Divider, message } from 'antd';
+import { Form, Input, Button, Card, Typography, Space, Divider } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, IdcardOutlined } from '@ant-design/icons';
 import { useAuth } from '../components/context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { testConnectionApi } from '../util/api';
 
 const { Title, Text } = Typography;
 
@@ -11,18 +10,6 @@ const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = React.useState(false);
-
-  const testBackendConnection = async () => {
-    try {
-      console.log('Testing backend connection...');
-      const response = await testConnectionApi();
-      console.log('Backend test response:', response);
-      message.success('Kết nối backend thành công!');
-    } catch (error) {
-      console.error('Backend test error:', error);
-      message.error('Không thể kết nối backend! Kiểm tra server có đang chạy không.');
-    }
-  };
 
   const onFinish = async (values) => {
     console.log('Form values:', values);
@@ -185,14 +172,6 @@ const Register = () => {
         </Divider>
 
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Button 
-            onClick={testBackendConnection}
-            size="large" 
-            style={{ width: '100%' }}
-          >
-            Test Kết nối Backend
-          </Button>
-          
           <Link to="/login">
             <Button 
               icon={<UserOutlined />} 

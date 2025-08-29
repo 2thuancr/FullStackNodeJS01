@@ -18,22 +18,27 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'));
 
   useEffect(() => {
-    if (token) {
+    // Chỉ check auth khi component mount và có token
+    // Không check auth mỗi khi token thay đổi
+    if (token && !user) {
       checkAuth();
     } else {
       setLoading(false);
     }
-  }, [token]);
+  }, []); // Chỉ chạy 1 lần khi component mount
 
   const checkAuth = async () => {
     try {
       const response = await getUserApi();
+      console.log('Check auth response:', response);
       if (response.data.success) {
         setUser(response.data.data.user);
       } else {
+        console.log('Check auth failed:', response.data.message);
         logout();
       }
     } catch (error) {
+      console.error('Check auth error:', error);
       logout();
     } finally {
       setLoading(false);
@@ -43,15 +48,25 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await loginApi(email, password);
+      console.log('Login response:', response);
       if (response.data.success) {
         const { user: userData, token: authToken } = response.data.data;
+        console.log('Login successful, user data:', userData);
+        console.log('Login successful, token:', authToken);
+        
+        // Set user và token trước
         setUser(userData);
         setToken(authToken);
         localStorage.setItem('token', authToken);
+        
         message.success('Đăng nhập thành công!');
         return { success: true };
+      } else {
+        console.log('Login failed:', response.data.message);
+        return { success: false, message: response.data.message };
       }
     } catch (error) {
+      console.error('Login error:', error);
       const errorMessage = error.response?.data?.message || 'Đăng nhập thất bại!';
       message.error(errorMessage);
       return { success: false, message: errorMessage };
@@ -100,6 +115,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    checkAuth, // Export checkAuth để có thể gọi từ bên ngoài
     isAuthenticated: !!user
   };
 

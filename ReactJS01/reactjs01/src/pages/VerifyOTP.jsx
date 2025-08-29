@@ -196,37 +196,6 @@ const VerifyOTP = () => {
           </Button>
           
           <Button 
-            onClick={() => {
-              console.log('Current form values:', { email, userData });
-              console.log('Location state:', location.state);
-              console.log('Form ref values:', formRef.current?.getFieldsValue());
-              console.log('Form initial values:', formRef.current?.getFieldsValue());
-            }}
-            size="large" 
-            style={{ width: '100%' }}
-          >
-            Debug Info
-          </Button>
-          
-          <Button 
-            onClick={async () => {
-              try {
-                const formValues = formRef.current?.getFieldsValue();
-                const emailToTest = formValues?.email || email;
-                               console.log('Testing API call with:', { email: emailToTest, otpCode: '123456' });
-               const response = await verifyOTPApi(emailToTest, '123456');
-                console.log('Test API response:', response);
-              } catch (error) {
-                console.error('Test API error:', error);
-              }
-            }}
-            size="large" 
-            style={{ width: '100%' }}
-          >
-            Test API
-          </Button>
-          
-          <Button 
             onClick={() => navigate('/register')}
             size="large" 
             style={{ width: '100%' }}
