@@ -47,6 +47,12 @@ const Layout = ({ children }) => {
       onClick: () => navigate('/')
     },
     {
+      key: '/products',
+      icon: <TeamOutlined />,
+      label: 'Sản phẩm',
+      onClick: () => navigate('/products')
+    },
+    {
       key: '/users',
       icon: <TeamOutlined />,
       label: 'Quản lý người dùng',
@@ -125,3 +131,4 @@ const Layout = ({ children }) => {
 };
 
 export default Layout;
+

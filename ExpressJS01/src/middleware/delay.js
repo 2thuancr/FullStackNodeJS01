@@ -7,3 +7,4 @@ const delay = (ms = 1000) => {
 };
 
 module.exports = delay;
+

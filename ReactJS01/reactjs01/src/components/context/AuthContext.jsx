@@ -15,14 +15,19 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(localStorage.getItem('access_token'));
 
   useEffect(() => {
     // Chỉ check auth khi component mount và có token
     // Không check auth mỗi khi token thay đổi
     if (token && !user) {
+      console.log('Token found, checking auth...');
       checkAuth();
+    } else if (!token) {
+      console.log('No token found, user not authenticated');
+      setLoading(false);
     } else {
+      console.log('User already authenticated');
       setLoading(false);
     }
   }, []); // Chỉ chạy 1 lần khi component mount
@@ -35,11 +40,22 @@ export const AuthProvider = ({ children }) => {
         setUser(response.data.data.user);
       } else {
         console.log('Check auth failed:', response.data.message);
-        logout();
+        // Chỉ logout nếu token không hợp lệ (401, 403)
+        if (response.status === 401 || response.status === 403) {
+          logout();
+        } else {
+          setLoading(false);
+        }
       }
     } catch (error) {
       console.error('Check auth error:', error);
-      logout();
+      // Chỉ logout nếu lỗi 401/403, không phải lỗi network
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        logout();
+      } else {
+        console.log('Network error, keeping user logged in');
+        setLoading(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -57,7 +73,7 @@ export const AuthProvider = ({ children }) => {
         // Set user và token trước
         setUser(userData);
         setToken(authToken);
-        localStorage.setItem('token', authToken);
+        localStorage.setItem('access_token', authToken);
         
         message.success('Đăng nhập thành công!');
         return { success: true };
@@ -104,7 +120,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
     message.info('Đã đăng xuất!');
   };
 
@@ -125,3 +141,4 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
+const productController = require('../controllers/productController');
 const { auth, adminAuth } = require('../middleware/auth');
 const delay = require('../middleware/delay');
 
@@ -101,6 +102,90 @@ const delay = require('../middleware/delay');
  *         email:
  *           type: string
  *           description: User email to resend OTP
+ *     Category:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Category ID
+ *         name:
+ *           type: string
+ *           description: Category name
+ *         description:
+ *           type: string
+ *           description: Category description
+ *         isActive:
+ *           type: boolean
+ *           description: Category status
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *     Product:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Product ID
+ *         name:
+ *           type: string
+ *           description: Product name
+ *         description:
+ *           type: string
+ *           description: Product description
+ *         price:
+ *           type: number
+ *           format: decimal
+ *           description: Product price
+ *         categoryId:
+ *           type: integer
+ *           description: Category ID
+ *         imageUrl:
+ *           type: string
+ *           description: Product image URL
+ *         stock:
+ *           type: integer
+ *           description: Product stock quantity
+ *         isActive:
+ *           type: boolean
+ *           description: Product status
+ *         category:
+ *           $ref: '#/components/schemas/Category'
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *     ProductListResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         data:
+ *           type: object
+ *           properties:
+ *             products:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Product'
+ *             pagination:
+ *               type: object
+ *               properties:
+ *                 currentPage:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 totalItems:
+ *                   type: integer
+ *                 itemsPerPage:
+ *                   type: integer
+ *                 hasNextPage:
+ *                   type: boolean
+ *                 hasPrevPage:
+ *                   type: boolean
  */
 
 /**
@@ -380,5 +465,122 @@ router.post('/resend-otp', delay(500), userController.resendOTP);
  *         description: Email không tồn tại hoặc dữ liệu không hợp lệ
  */
 router.get('/check-email-verification/:email', userController.checkEmailVerification);
+
+/**
+ * @swagger
+ * /v1/api/products:
+ *   get:
+ *     summary: Lấy danh sách sản phẩm với phân trang
+ *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Số sản phẩm mỗi trang
+ *       - in: query
+ *         name: categoryId
+ *         schema:
+ *           type: integer
+ *         description: ID danh mục để lọc sản phẩm
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Tìm kiếm theo tên sản phẩm
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [name, price, createdAt]
+ *           default: createdAt
+ *         description: Trường sắp xếp
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: DESC
+ *         description: Thứ tự sắp xếp
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách sản phẩm thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProductListResponse'
+ *       400:
+ *         description: Tham số không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/products', productController.getProducts);
+
+/**
+ * @swagger
+ * /v1/api/products/{id}:
+ *   get:
+ *     summary: Lấy thông tin sản phẩm theo ID
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID sản phẩm
+ *     responses:
+ *       200:
+ *         description: Lấy thông tin sản phẩm thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Product'
+ *       404:
+ *         description: Không tìm thấy sản phẩm
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/products/:id', productController.getProductById);
+
+/**
+ * @swagger
+ * /v1/api/categories:
+ *   get:
+ *     summary: Lấy danh sách danh mục
+ *     tags: [Products]
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách danh mục thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Category'
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/categories', productController.getCategories);
 
 module.exports = router;

@@ -23,9 +23,12 @@ const connection = async () => {
         await sequelize.authenticate();
         console.log('MySQL Database Connected Successfully!');
         
-        // Sync all models - sử dụng force để tạo lại bảng
-        await sequelize.sync({ force: true });
-        console.log('Database synchronized with force!');
+        // Load all models
+        require('../models');
+        
+        // Sync all models - chỉ tạo bảng mới nếu chưa tồn tại, không thay đổi dữ liệu
+        await sequelize.sync();
+        console.log('Database synchronized!');
     } catch (error) {
         console.error('Database connection failed:', error);
         // Không exit process để có thể debug

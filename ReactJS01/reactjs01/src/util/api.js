@@ -57,6 +57,28 @@ const testConnectionApi = () => {
   return axios.get(URL_API);
 };
 
+// Products API functions
+const getProductsApi = (params = {}) => {
+  const URL_API = "/v1/api/products";
+  return axios.get(URL_API, { params });
+};
+
+const getProductByIdApi = (id) => {
+  const URL_API = `/v1/api/products/${id}`;
+  return axios.get(URL_API);
+};
+
+// Categories API functions
+const getCategoriesApi = () => {
+  const URL_API = "/v1/api/categories";
+  return axios.get(URL_API);
+};
+
+const getCategoryByIdApi = (id) => {
+  const URL_API = `/v1/api/categories/${id}`;
+  return axios.get(URL_API);
+};
+
 export { 
   createUserApi, 
   loginApi, 
@@ -65,7 +87,11 @@ export {
   verifyOTPApi, 
   resendOTPApi, 
   checkEmailVerificationApi,
-  testConnectionApi
+  testConnectionApi,
+  getProductsApi,
+  getProductByIdApi,
+  getCategoriesApi,
+  getCategoryByIdApi
 };
 
 // Default export cho backward compatibility
@@ -77,7 +103,12 @@ const api = {
   verifyOTPApi,
   resendOTPApi,
   checkEmailVerificationApi,
-  testConnectionApi
+  testConnectionApi,
+  getProductsApi,
+  getProductByIdApi,
+  getCategoriesApi,
+  getCategoryByIdApi
 };
 
 export default api;
+

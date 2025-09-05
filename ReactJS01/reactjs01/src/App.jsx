@@ -6,6 +6,7 @@ import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
+import Products from './pages/Products';
 import ForgotPassword from './pages/ForgotPassword';
 import VerifyOTP from './pages/VerifyOTP';
 import PrivateRoute from './components/PrivateRoute';
@@ -30,6 +31,13 @@ function App() {
                 </Layout>
               </PrivateRoute>
             } />
+            <Route path="/products" element={
+              <PrivateRoute>
+                <Layout>
+                  <Products />
+                </Layout>
+              </PrivateRoute>
+            } />
           </Routes>
         </Router>
       </AuthProvider>
@@ -38,3 +46,4 @@ function App() {
 }
 
 export default App;
+

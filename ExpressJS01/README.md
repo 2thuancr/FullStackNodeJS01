@@ -51,3 +51,4 @@ src/
 ├── views/           # EJS templates
 └── server.js        # Entry point
 ```
+
