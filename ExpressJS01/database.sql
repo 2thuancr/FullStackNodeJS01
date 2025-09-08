@@ -62,3 +62,5 @@ CREATE INDEX idx_products_price ON products(price);
 CREATE INDEX idx_products_active ON products(isActive);
 CREATE INDEX idx_products_stock ON products(stock);
 
+
+

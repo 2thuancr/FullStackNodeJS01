@@ -22,7 +22,7 @@ const CategoryFilter = ({
       
       <Select
         placeholder="Chọn danh mục sản phẩm"
-        style={{ width: 300 }}
+        style={{ width: '100%', maxWidth: 250 }}
         value={selectedCategoryId}
         onChange={onCategoryChange}
         loading={loading}
@@ -32,6 +32,7 @@ const CategoryFilter = ({
         filterOption={(input, option) =>
           option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
         }
+        size="middle"
       >
         <Option value="">Tất cả danh mục</Option>
         {categories.map(category => (
@@ -45,3 +46,4 @@ const CategoryFilter = ({
 };
 
 export default CategoryFilter;
+

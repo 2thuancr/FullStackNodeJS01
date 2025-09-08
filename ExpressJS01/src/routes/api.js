@@ -502,7 +502,7 @@ router.get('/check-email-verification/:email', userController.checkEmailVerifica
  *         name: sortBy
  *         schema:
  *           type: string
- *           enum: [name, price, createdAt]
+ *           enum: [name, price, createdAt, views, rating, discount]
  *           default: createdAt
  *         description: Trường sắp xếp
  *       - in: query
@@ -512,6 +512,50 @@ router.get('/check-email-verification/:email', userController.checkEmailVerifica
  *           enum: [ASC, DESC]
  *           default: DESC
  *         description: Thứ tự sắp xếp
+ *       - in: query
+ *         name: minPrice
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *         description: Giá tối thiểu
+ *       - in: query
+ *         name: maxPrice
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *         description: Giá tối đa
+ *       - in: query
+ *         name: minDiscount
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *           maximum: 100
+ *         description: Phần trăm giảm giá tối thiểu (0-100%)
+ *       - in: query
+ *         name: maxDiscount
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *           maximum: 100
+ *         description: Phần trăm giảm giá tối đa (0-100%)
+ *       - in: query
+ *         name: minRating
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *           maximum: 5
+ *         description: Đánh giá tối thiểu (0-5 sao, ví dụ 3.5 sẽ lấy sản phẩm từ 3.5 sao trở lên)
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [in_stock, out_of_stock, discontinued]
+ *         description: Trạng thái sản phẩm
+ *       - in: query
+ *         name: popular
+ *         schema:
+ *           type: boolean
+ *         description: Sản phẩm phổ biến (lượt xem cao)
  *     responses:
  *       200:
  *         description: Lấy danh sách sản phẩm thành công
@@ -556,6 +600,47 @@ router.get('/products', productController.getProducts);
  *       500:
  *         description: Lỗi server
  */
+/**
+ * @swagger
+ * /v1/api/products/discount-ranges:
+ *   get:
+ *     summary: Lấy danh sách các khoảng discount có sẵn
+ *     tags: [Products]
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách khoảng discount thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       label:
+ *                         type: string
+ *                         description: Nhãn hiển thị (ví dụ 0% - 5%)
+ *                       minDiscount:
+ *                         type: number
+ *                         description: Phần trăm giảm giá tối thiểu
+ *                       maxDiscount:
+ *                         type: number
+ *                         description: Phần trăm giảm giá tối đa
+ *                       description:
+ *                         type: string
+ *                         description: Mô tả khoảng discount
+ *                       productCount:
+ *                         type: integer
+ *                         description: Số lượng sản phẩm trong khoảng này
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/products/discount-ranges', productController.getDiscountRanges);
+
 router.get('/products/:id', productController.getProductById);
 
 /**

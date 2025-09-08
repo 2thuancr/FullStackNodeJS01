@@ -51,6 +51,48 @@ const Product = sequelize.define('Product', {
     isActive: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+    },
+    // Thêm các trường mới cho tính năng lọc
+    originalPrice: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        validate: {
+            min: 0
+        }
+    },
+    discount: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0,
+        validate: {
+            min: 0,
+            max: 100
+        }
+    },
+    views: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        validate: {
+            min: 0
+        }
+    },
+    rating: {
+        type: DataTypes.DECIMAL(2, 1),
+        defaultValue: 0,
+        validate: {
+            min: 0,
+            max: 5
+        }
+    },
+    ratingCount: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        validate: {
+            min: 0
+        }
+    },
+    status: {
+        type: DataTypes.ENUM('in_stock', 'out_of_stock', 'discontinued'),
+        defaultValue: 'in_stock'
     }
 }, {
     tableName: 'products',

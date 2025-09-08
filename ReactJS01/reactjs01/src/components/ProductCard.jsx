@@ -1,10 +1,46 @@
 import React from 'react';
-import { Card, Typography, Tag, Space, Button } from 'antd';
-import { ShoppingCartOutlined, EyeOutlined } from '@ant-design/icons';
+import { Card, Button, Space, Typography, Tag, Image, Tooltip, Rate } from 'antd';
+import { 
+  EyeOutlined, 
+  ShoppingCartOutlined, 
+  StarOutlined,
+  CalendarOutlined,
+  TagOutlined
+} from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;
 
-const ProductCard = ({ product, onViewDetails, onAddToCart }) => {
+const ProductCard = ({ 
+  product, 
+  onViewDetails, 
+  onAddToCart 
+}) => {
+  const {
+    id,
+    name,
+    description,
+    price,
+    originalPrice,
+    discount,
+    imageUrl,
+    image,
+    image_url,
+    stock,
+    category,
+    createdAt,
+    rating = 0,
+    ratingCount = 0
+  } = product;
+
+  // Convert string values to numbers if needed
+  const numericRating = typeof rating === 'string' ? parseFloat(rating) : rating;
+  const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
+  const numericOriginalPrice = typeof originalPrice === 'string' ? parseFloat(originalPrice) : originalPrice;
+  const numericDiscount = typeof discount === 'string' ? parseFloat(discount) : discount;
+  const numericStock = typeof stock === 'string' ? parseInt(stock) : stock;
+  const numericRatingCount = typeof ratingCount === 'string' ? parseInt(ratingCount) : ratingCount;
+
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -12,199 +48,254 @@ const ProductCard = ({ product, onViewDetails, onAddToCart }) => {
     }).format(price);
   };
 
-  const formatStock = (stock) => {
-    if (stock > 10) return 'Còn hàng';
-    if (stock > 0) return `Còn ${stock} sản phẩm`;
-    return 'Hết hàng';
+  const getStockStatus = (stock) => {
+    if (stock > 10) return { text: 'Còn hàng', color: 'green' };
+    if (stock > 0) return { text: `Còn ${stock} sản phẩm`, color: 'orange' };
+    return { text: 'Hết hàng', color: 'red' };
   };
 
-  const getStockColor = (stock) => {
-    if (stock > 10) return 'green';
-    if (stock > 0) return 'orange';
-    return 'red';
+  const stockStatus = getStockStatus(numericStock);
+
+  // Xác định URL hình ảnh từ các trường có thể có
+  const getImageUrl = () => {
+    const url = imageUrl || image || image_url || null;
+    
+    // Kiểm tra nếu URL là example.com hoặc không hợp lệ
+    if (url && (url.includes('example.com') || url.includes('placeholder'))) {
+      return null;
+    }
+    
+    return url;
+  };
+
+  const productImageUrl = getImageUrl();
+
+  // Tạo placeholder image dựa trên tên sản phẩm
+  const generatePlaceholderImage = (productName) => {
+    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff'];
+    const color = colors[productName.length % colors.length];
+    const firstLetter = productName.charAt(0).toUpperCase();
+    
+    return `data:image/svg+xml;base64,${btoa(`
+      <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="${color}"/>
+        <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="48" font-weight="bold" 
+              text-anchor="middle" dominant-baseline="middle" fill="white">
+          ${firstLetter}
+        </text>
+        <text x="50%" y="60%" font-family="Arial, sans-serif" font-size="16" 
+              text-anchor="middle" dominant-baseline="middle" fill="rgba(255,255,255,0.8)">
+          ${productName}
+        </text>
+      </svg>
+    `)}`;
   };
 
   return (
     <Card
       hoverable
+      style={{ 
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
       cover={
-        <div style={{ 
-          height: 200, 
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '8px 8px 0 0'
-        }}>
-          {product.imageUrl ? (
-            <img
-              alt={product.name}
-              src={product.imageUrl}
+        <div style={{ height: 160, overflow: 'hidden' }}>
+          {productImageUrl ? (
+            <Image
+              alt={name}
+              src={productImageUrl}
               style={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover'
               }}
+              fallback={
+                <img
+                  src={generatePlaceholderImage(name)}
+                  alt={name}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              }
               onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
+                // Thay thế bằng placeholder khi lỗi
+                e.target.src = generatePlaceholderImage(name);
               }}
             />
-          ) : null}
-          <div 
-            style={{ 
-              display: product.imageUrl ? 'none' : 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              color: '#999',
-              fontSize: '14px',
-              flexDirection: 'column',
-              gap: '8px'
-            }}
-          >
-            <div style={{ fontSize: '24px', opacity: 0.5 }}>📷</div>
-            <div>Không có ảnh</div>
-          </div>
+          ) : (
+            <img
+              src={generatePlaceholderImage(name)}
+              alt={name}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            />
+          )}
         </div>
       }
+      bodyStyle={{ 
+        padding: 12,
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column'
+      }}
       actions={[
-        <div style={{ 
-          display: 'flex', 
-          gap: '8px', 
-          padding: '0 16px 16px 16px',
-          width: '100%'
-        }}>
-          <Button 
-            type="text" 
-            icon={<EyeOutlined />} 
-            onClick={() => onViewDetails(product)}
-            style={{ 
-              flex: 1,
-              height: '36px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: '500',
-              borderRadius: '6px',
-              border: '1px solid #d9d9d9'
-            }}
-          >
-            Xem chi tiết
-          </Button>
+        <Tooltip title="Xem chi tiết">
           <Button 
             type="primary" 
-            icon={<ShoppingCartOutlined />} 
-            onClick={() => onAddToCart(product)}
-            disabled={product.stock === 0}
-            style={{ 
-              flex: 1,
-              height: '36px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: '500',
-              borderRadius: '6px',
-              background: product.stock === 0 ? '#f5f5f5' : '#1890ff',
-              borderColor: product.stock === 0 ? '#d9d9d9' : '#1890ff'
-            }}
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => onViewDetails && onViewDetails(product)}
           >
-            Thêm vào giỏ
+            Chi tiết
           </Button>
-        </div>
+        </Tooltip>,
+        <Tooltip title="Thêm vào giỏ hàng">
+          <Button 
+            type="default" 
+            size="small"
+            icon={<ShoppingCartOutlined />}
+            onClick={() => onAddToCart && onAddToCart(product)}
+            disabled={stock === 0}
+          >
+            Mua ngay
+          </Button>
+        </Tooltip>
       ]}
-      style={{ 
-        height: '100%',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        transition: 'all 0.3s ease',
-        border: '1px solid #f0f0f0',
-        cursor: 'pointer'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
-        e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-      }}
-      bodyStyle={{ padding: '16px' }}
     >
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Category Tag */}
+        {category && (
+          <div style={{ marginBottom: 8 }}>
+            <Tag 
+              icon={<TagOutlined />} 
+              color="blue"
+              style={{ fontSize: '11px' }}
+            >
+              {category.name}
+            </Tag>
+          </div>
+        )}
+
         {/* Product Name */}
         <Title 
           level={5} 
           style={{ 
-            margin: '0 0 8px 0', 
-            fontSize: '16px',
-            fontWeight: '600',
-            lineHeight: '1.4',
-            color: '#262626'
+            margin: '0 0 6px 0',
+            minHeight: '32px',
+            fontSize: '14px',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden'
           }}
-          ellipsis={{ rows: 2 }}
+          title={name}
         >
-          {product.name}
+          {name}
         </Title>
-        
+
         {/* Description */}
-        <Paragraph 
-          ellipsis={{ rows: 2 }} 
-          style={{ 
-            margin: '0 0 12px 0', 
-            fontSize: '13px', 
-            color: '#8c8c8c',
-            lineHeight: '1.4'
+        <Paragraph
+          style={{
+            margin: '0 0 8px 0',
+            fontSize: '11px',
+            color: '#666',
+            minHeight: '28px',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden'
           }}
         >
-          {product.description}
+          {description}
         </Paragraph>
-        
-        {/* Price and Stock */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          marginBottom: '8px'
-        }}>
-          <Text strong style={{ 
-            fontSize: '18px', 
-            color: '#ff4d4f',
-            fontWeight: '700'
-          }}>
-            {formatPrice(product.price)}
-          </Text>
-          <Tag 
-            color={getStockColor(product.stock)}
-            style={{
-              fontSize: '11px',
-              padding: '2px 8px',
-              borderRadius: '12px',
-              fontWeight: '500'
-            }}
-          >
-            {formatStock(product.stock)}
+
+        {/* Price */}
+        <div style={{ marginBottom: 8 }}>
+          {numericOriginalPrice && numericOriginalPrice > numericPrice ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <Text 
+                  strong 
+                  style={{ 
+                    fontSize: '16px', 
+                    color: '#ff4d4f' 
+                  }}
+                >
+                  {formatPrice(numericPrice)}
+                </Text>
+                {numericDiscount && numericDiscount > 0 && (
+                  <Tag color="red" size="small">
+                    -{numericDiscount.toFixed(0)}%
+                  </Tag>
+                )}
+              </div>
+              <Text 
+                style={{ 
+                  fontSize: '12px', 
+                  color: '#999',
+                  textDecoration: 'line-through'
+                }}
+              >
+                {formatPrice(numericOriginalPrice)}
+              </Text>
+            </div>
+          ) : (
+            <Text 
+              strong 
+              style={{ 
+                fontSize: '16px', 
+                color: '#ff4d4f' 
+              }}
+            >
+              {formatPrice(numericPrice)}
+            </Text>
+          )}
+        </div>
+
+        {/* Stock Status */}
+        <div style={{ marginBottom: 6 }}>
+          <Tag color={stockStatus.color} size="small">
+            {stockStatus.text}
           </Tag>
         </div>
-        
-        {/* Category */}
-        {product.category && (
-          <Text 
-            type="secondary" 
-            style={{ 
-              fontSize: '11px',
-              color: '#bfbfbf',
-              marginTop: 'auto'
-            }}
-          >
-            Danh mục: {product.category.name}
-          </Text>
-        )}
+
+        {/* Rating and Date */}
+        <div style={{ 
+          marginTop: 'auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          fontSize: '10px',
+          color: '#999'
+        }}>
+          <div style={{ flex: 1 }}>
+            <Rate 
+              disabled 
+              value={numericRating} 
+              style={{ fontSize: '10px' }}
+              allowHalf
+            />
+            <div style={{ fontSize: '9px', color: '#999', marginTop: 2 }}>
+              {numericRating.toFixed(1)} ({numericRatingCount} đánh giá)
+            </div>
+          </div>
+          
+          <div style={{ textAlign: 'right' }}>
+            <Space size="small">
+              <CalendarOutlined style={{ fontSize: '10px' }} />
+              <Text type="secondary" style={{ fontSize: '10px' }}>
+                {new Date(createdAt).toLocaleDateString('vi-VN')}
+              </Text>
+            </Space>
+          </div>
+        </div>
       </div>
     </Card>
   );

@@ -1,23 +1,22 @@
-import React, { useState } from 'react';
-import { Layout as AntLayout, Menu, Button, Avatar, Dropdown } from 'antd';
+import React from 'react';
+import { Layout as AntLayout, Menu, Avatar, Dropdown } from 'antd';
 import { 
-  MenuFoldOutlined, 
-  MenuUnfoldOutlined, 
   UserOutlined, 
   LogoutOutlined,
   HomeOutlined,
+  ShoppingOutlined,
   TeamOutlined,
   SettingOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-const { Header, Sider, Content, Footer } = AntLayout;
+const { Header, Content, Footer } = AntLayout;
 
 const Layout = ({ children }) => {
-  const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
@@ -48,7 +47,7 @@ const Layout = ({ children }) => {
     },
     {
       key: '/products',
-      icon: <TeamOutlined />,
+      icon: <ShoppingOutlined />,
       label: 'Sản phẩm',
       onClick: () => navigate('/products')
     },
@@ -68,67 +67,87 @@ const Layout = ({ children }) => {
 
   return (
     <AntLayout style={{ minHeight: '100vh' }}>
-      <Sider trigger={null} collapsible collapsed={collapsed}>
+      <Header style={{ 
+        padding: '0 24px', 
+        background: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        position: 'sticky',
+        top: 0,
+        zIndex: 99,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}>
+        {/* Logo */}
         <div style={{ 
-          height: 32, 
-          margin: 16, 
-          background: 'rgba(255, 255, 255, 0.2)',
-          borderRadius: 6,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          fontWeight: 'bold'
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 16,
+          fontSize: '18px',
+          fontWeight: 'bold',
+          color: '#1890ff'
         }}>
-          {collapsed ? 'FS' : 'FullStack'}
+          <span>FullStack</span>
         </div>
+
+        {/* Navigation Menu */}
         <Menu
-          theme="dark"
-          mode="inline"
-          defaultSelectedKeys={['/']}
+          mode="horizontal"
+          selectedKeys={[location.pathname]}
           items={menuItems}
+          style={{ 
+            flex: 1, 
+            justifyContent: 'center',
+            border: 'none',
+            background: 'transparent'
+          }}
         />
-      </Sider>
-      <AntLayout>
-        <Header style={{ 
-          padding: '0 16px', 
-          background: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            style={{ fontSize: '16px', width: 64, height: 64 }}
-          />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span>Xin chào, {user?.fullName}</span>
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <Avatar 
-                icon={<UserOutlined />} 
-                style={{ cursor: 'pointer' }}
-              />
-            </Dropdown>
-          </div>
-        </Header>
+
+        {/* User Menu */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span style={{ color: '#666' }}>Xin chào, {user?.fullName}</span>
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+            <Avatar 
+              icon={<UserOutlined />} 
+              style={{ cursor: 'pointer' }}
+            />
+          </Dropdown>
+        </div>
+      </Header>
+
+      {/* Content Area */}
+      <div 
+        className="content-scroll-area"
+        style={{
+          height: 'calc(100vh - 64px)',
+          overflowY: 'auto',
+          background: '#f5f5f5'
+        }}
+      >
         <Content style={{ 
-          margin: '24px 16px', 
+          margin: '24px', 
           padding: 24, 
           background: '#fff',
-          borderRadius: 6,
-          minHeight: 280
+          borderRadius: 8,
+          minHeight: 'calc(100vh - 112px)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
           {children}
         </Content>
-        <Footer style={{ textAlign: 'center' }}>
+        <Footer style={{ 
+          textAlign: 'center',
+          background: '#f5f5f5',
+          padding: '16px 0',
+          color: '#666'
+        }}>
           FullStack NodeJS App ©2024 Created with ❤️
         </Footer>
-      </AntLayout>
+      </div>
     </AntLayout>
   );
 };
 
 export default Layout;
+
+
 

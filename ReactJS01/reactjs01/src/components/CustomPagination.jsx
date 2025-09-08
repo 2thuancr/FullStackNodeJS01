@@ -21,7 +21,6 @@ const CustomPagination = ({
   const startItem = total > 0 ? (current - 1) * pageSize + 1 : 0;
   const endItem = Math.min(current * pageSize, total);
   
-  console.log('CustomPagination render:', { current, total, pageSize, totalPages, startItem, endItem }); // Debug log
 
   const handlePageChange = (page) => {
     onChange(page);
