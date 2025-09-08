@@ -639,6 +639,158 @@ router.get('/products', productController.getProducts);
  *       500:
  *         description: Lỗi server
  */
+/**
+ * @swagger
+ * /v1/api/products/fuzzy-search:
+ *   get:
+ *     summary: Tìm kiếm sản phẩm với Fuzzy Search (Elasticsearch)
+ *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Từ khóa tìm kiếm
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Số sản phẩm mỗi trang
+ *       - in: query
+ *         name: categoryId
+ *         schema:
+ *           type: integer
+ *         description: ID danh mục
+ *       - in: query
+ *         name: minPrice
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *         description: Giá tối thiểu
+ *       - in: query
+ *         name: maxPrice
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *         description: Giá tối đa
+ *       - in: query
+ *         name: minRating
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *           maximum: 5
+ *         description: Đánh giá tối thiểu (0-5 sao)
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [in_stock, out_of_stock, discontinued]
+ *         description: Trạng thái sản phẩm
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [name, price, createdAt, views, rating, discount, relevance]
+ *           default: createdAt
+ *         description: Sắp xếp theo
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Thứ tự sắp xếp
+ *     responses:
+ *       200:
+ *         description: Tìm kiếm thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Tìm thấy 5 sản phẩm cho từ khóa "iphone"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     products:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Product'
+ *                     pagination:
+ *                       $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         description: Dữ liệu đầu vào không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/products/fuzzy-search', productController.fuzzySearch);
+
+/**
+ * @swagger
+ * /v1/api/products/search-suggestions:
+ *   get:
+ *     summary: Lấy gợi ý từ khóa tìm kiếm
+ *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Từ khóa tìm kiếm
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 20
+ *           default: 5
+ *         description: Số lượng gợi ý
+ *     responses:
+ *       200:
+ *         description: Lấy gợi ý thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       text:
+ *                         type: string
+ *                         example: iPhone 15 Pro Max
+ *                       score:
+ *                         type: number
+ *                         example: 1.5
+ *       400:
+ *         description: Dữ liệu đầu vào không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/products/search-suggestions', productController.getSearchSuggestions);
+
 router.get('/products/discount-ranges', productController.getDiscountRanges);
 
 router.get('/products/:id', productController.getProductById);

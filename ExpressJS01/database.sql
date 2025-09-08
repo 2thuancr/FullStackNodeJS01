@@ -64,3 +64,4 @@ CREATE INDEX idx_products_stock ON products(stock);
 
 
 
+

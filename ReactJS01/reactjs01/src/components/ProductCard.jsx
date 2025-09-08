@@ -7,6 +7,7 @@ import {
   CalendarOutlined,
   TagOutlined
 } from '@ant-design/icons';
+import HighlightedText from './HighlightedText';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -197,7 +198,10 @@ const ProductCard = ({
           }}
           title={name}
         >
-          {name}
+          <HighlightedText 
+            text={name} 
+            highlights={product._highlight?.name} 
+          />
         </Title>
 
         {/* Description */}
@@ -213,7 +217,10 @@ const ProductCard = ({
             overflow: 'hidden'
           }}
         >
-          {description}
+          <HighlightedText 
+            text={description} 
+            highlights={product._highlight?.description} 
+          />
         </Paragraph>
 
         {/* Price */}

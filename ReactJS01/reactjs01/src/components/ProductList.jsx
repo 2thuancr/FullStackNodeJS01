@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
   Row, 
   Col, 
@@ -10,7 +10,8 @@ import {
   message,
   Pagination,
   Input,
-  Select
+  Select,
+  AutoComplete
 } from 'antd';
 import { 
   SearchOutlined, 
@@ -18,7 +19,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined
 } from '@ant-design/icons';
-import { getProductsApi, getCategoriesApi } from '../util/api';
+import { getProductsApi, getCategoriesApi, fuzzySearchProductsApi, getSearchSuggestionsApi } from '../util/api';
 import ProductCard from './ProductCard';
 import CategoryFilter from './CategoryFilter';
 import CustomPagination from './CustomPagination';
@@ -27,6 +28,7 @@ import PromotionFilter from './PromotionFilter';
 import ViewsFilter from './ViewsFilter';
 import RatingFilter from './RatingFilter';
 import StatusFilter from './StatusFilter';
+import SearchResults from './SearchResults';
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -50,6 +52,7 @@ const ProductList = ({
   // Filter states
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // For real-time input
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('DESC');
   const [pageSize, setPageSize] = useState(12);
@@ -60,10 +63,130 @@ const ProductList = ({
   const [viewsFilter, setViewsFilter] = useState('');
   const [ratingFilter, setRatingFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
   // Refs
   const observerRef = useRef();
   const lastProductRef = useRef();
+  const searchTimeoutRef = useRef();
+
+  // Debounce function
+  const debounce = (func, delay) => {
+    return (...args) => {
+      clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = setTimeout(() => func.apply(null, args), delay);
+    };
+  };
+
+  // Generate search suggestions from API
+  const [apiSuggestions, setApiSuggestions] = useState([]);
+  const [suggestionsCache, setSuggestionsCache] = useState({});
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  
+  // Fetch suggestions from API with caching
+  const fetchSuggestions = useCallback(async (query) => {
+    if (!query || query.length < 2) {
+      setApiSuggestions([]);
+      setLoadingSuggestions(false);
+      return;
+    }
+    
+    // Check cache first
+    if (suggestionsCache[query]) {
+      setApiSuggestions(suggestionsCache[query]);
+      setLoadingSuggestions(false);
+      return;
+    }
+    
+    setLoadingSuggestions(true);
+    try {
+      const response = await getSearchSuggestionsApi({ q: query, limit: 8 });
+      if (response.data.success) {
+        const suggestions = response.data.data.map(item => ({
+          value: item.text,
+          label: item.text,
+          type: 'api'
+        }));
+        setApiSuggestions(suggestions);
+        // Cache the results
+        setSuggestionsCache(prev => ({
+          ...prev,
+          [query]: suggestions
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      setApiSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, [suggestionsCache]);
+
+  // Debounced suggestion fetch
+  const debouncedFetchSuggestions = useCallback(
+    debounce(fetchSuggestions, 200), // Giảm từ 300ms xuống 200ms
+    [fetchSuggestions]
+  );
+
+  // Update suggestions when search input changes
+  useEffect(() => {
+    debouncedFetchSuggestions(searchInput);
+  }, [searchInput, debouncedFetchSuggestions]);
+
+  // Auto-load products when search input changes (with debounce)
+  useEffect(() => {
+    if (searchInput && searchInput.trim().length > 0) {
+      const timeoutId = setTimeout(() => {
+        setSearchTerm(searchInput);
+        setPage(1);
+      }, 300); // Giảm từ 500ms xuống 300ms
+      
+      return () => clearTimeout(timeoutId);
+    } else if (searchInput === '') {
+      // Clear search immediately when input is empty
+      setSearchTerm('');
+      setPage(1);
+    }
+  }, [searchInput]);
+
+  // Generate search suggestions (combine API and local)
+  const generateSearchSuggestions = useMemo(() => {
+    if (!searchInput || searchInput.length < 2) return [];
+    
+    const suggestions = [...apiSuggestions];
+    
+    // Add local suggestions if API suggestions are not enough
+    if (suggestions.length < 5) {
+      const input = searchInput.toLowerCase();
+      
+      // Add product names
+      products.forEach(product => {
+        if (product.name.toLowerCase().includes(input) && 
+            !suggestions.some(s => s.value === product.name)) {
+          suggestions.push({
+            value: product.name,
+            label: product.name,
+            type: 'product'
+          });
+        }
+      });
+      
+      // Add category names
+      categories.forEach(category => {
+        if (category.name.toLowerCase().includes(input) && 
+            !suggestions.some(s => s.value === category.name)) {
+          suggestions.push({
+            value: category.name,
+            label: category.name,
+            type: 'category'
+          });
+        }
+      });
+    }
+    
+    return suggestions.slice(0, 8); // Limit to 8 suggestions
+  }, [searchInput, apiSuggestions, products, categories]);
 
   // Load categories
   const loadCategories = useCallback(async () => {
@@ -92,9 +215,9 @@ const ProductList = ({
         sortBy,
         sortOrder,
         ...(selectedCategoryId && { categoryId: selectedCategoryId }),
-        ...(searchTerm && { search: searchTerm }),
+        ...(searchTerm && { q: searchTerm }), // Changed from 'search' to 'q' for fuzzy search
         ...(priceRange && priceRange[0] > 0 && { minPrice: priceRange[0] }),
-        ...(priceRange && priceRange[1] < 10000000 && { maxPrice: priceRange[1] }),
+        ...(priceRange && priceRange[1] > 0 && priceRange[1] < 10000000 && { maxPrice: priceRange[1] }),
         ...(promotionFilter === 'any' && { minDiscount: 0.01 }),
         ...(promotionFilter === 'high' && { minDiscount: 20 }),
         ...(promotionFilter === 'medium' && { minDiscount: 10, maxDiscount: 20 }),
@@ -104,7 +227,17 @@ const ProductList = ({
         ...(statusFilter && { status: statusFilter })
       };
 
-      const response = await getProductsApi(params);
+      // Use fuzzy search if searchTerm exists, otherwise use regular search
+      const useFuzzySearch = searchTerm && searchTerm.trim().length > 0;
+      
+      // Debug log để kiểm tra parameters
+      console.log('Price Range State:', priceRange);
+      console.log('API Parameters:', params);
+      console.log('Using fuzzy search:', useFuzzySearch);
+      
+      const response = useFuzzySearch 
+        ? await fuzzySearchProductsApi(params)
+        : await getProductsApi(params);
       
       if (response.data.success) {
         const { products: newProducts, pagination } = response.data.data;
@@ -205,7 +338,7 @@ const ProductList = ({
 
   useEffect(() => {
     loadProducts(1, false);
-  }, [selectedCategoryId, searchTerm, sortBy, sortOrder, pageSize, priceRange, promotionFilter, viewsFilter, ratingFilter, statusFilter]);
+  }, [selectedCategoryId, searchTerm, sortBy, sortOrder, pageSize, priceRange, promotionFilter, viewsFilter, ratingFilter, statusFilter, loadProducts]);
 
   // Reset when switching between pagination and lazy loading
   useEffect(() => {
@@ -219,6 +352,15 @@ const ProductList = ({
     }
   }, [useLazyLoading, loadProducts]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Handlers
   const handleCategoryChange = (value) => {
     setSelectedCategoryId(value);
@@ -227,6 +369,121 @@ const ProductList = ({
 
   const handleSearch = (value) => {
     setSearchTerm(value);
+    setPage(1);
+  };
+
+  // Handle real-time search input
+  const handleSearchInputChange = (value) => {
+    setSearchInput(value);
+    setShowSuggestions(value.length >= 2);
+  };
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = (value) => {
+    setSearchInput(value);
+    setSearchTerm(value);
+    setShowSuggestions(false);
+    setPage(1);
+  };
+
+  // Create active filters object for SearchResults
+  const activeFilters = useMemo(() => {
+    const filters = {};
+    
+    if (selectedCategoryId) {
+      const category = categories.find(cat => cat.id === selectedCategoryId);
+      if (category) {
+        filters.category = category.name;
+      }
+    }
+    
+    if (priceRange && (priceRange[0] > 0 || priceRange[1] < 10000000)) {
+      filters.priceRange = priceRange;
+    }
+    
+    if (promotionFilter) {
+      const promotionLabels = {
+        'any': 'Có khuyến mãi',
+        'high': 'Giảm > 20%',
+        'medium': 'Giảm 10-20%',
+        'low': 'Giảm < 10%'
+      };
+      filters.promotion = promotionLabels[promotionFilter] || promotionFilter;
+    }
+    
+    if (viewsFilter) {
+      const viewsLabels = {
+        'high': 'Lượt xem cao (>1000)',
+        'medium': 'Lượt xem trung bình (500-1000)',
+        'low': 'Lượt xem thấp (<500)'
+      };
+      filters.views = viewsLabels[viewsFilter] || viewsFilter;
+    }
+    
+    if (ratingFilter) {
+      filters.rating = ratingFilter;
+    }
+    
+    if (statusFilter) {
+      const statusLabels = {
+        'in_stock': 'Còn hàng',
+        'out_of_stock': 'Hết hàng',
+        'discontinued': 'Ngừng kinh doanh'
+      };
+      filters.status = statusLabels[statusFilter] || statusFilter;
+    }
+    
+    return filters;
+  }, [selectedCategoryId, categories, priceRange, promotionFilter, viewsFilter, ratingFilter, statusFilter]);
+
+  // Clear search function
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearchTerm('');
+    setPage(1);
+  };
+
+  // Clear cache and reload
+  const handleClearCache = () => {
+    setSuggestionsCache({});
+    setApiSuggestions([]);
+    setPage(1);
+    loadProducts(1, false);
+  };
+
+  // Clear filters function
+  const handleClearFilters = (filterType) => {
+    if (filterType === 'all') {
+      setSelectedCategoryId('');
+      setPriceRange([0, 10000000]);
+      setPromotionFilter('');
+      setViewsFilter('');
+      setRatingFilter('');
+      setStatusFilter('');
+    } else {
+      switch (filterType) {
+        case 'category':
+          setSelectedCategoryId('');
+          break;
+        case 'priceRange':
+          setPriceRange([0, 10000000]);
+          break;
+        case 'promotion':
+          setPromotionFilter('');
+          break;
+        case 'views':
+          setViewsFilter('');
+          break;
+        case 'rating':
+          setRatingFilter('');
+          break;
+        case 'status':
+          setStatusFilter('');
+          break;
+        default:
+          break;
+      }
+    }
     setPage(1);
   };
 
@@ -398,6 +655,15 @@ const ProductList = ({
 
         {/* Right Content Area */}
         <Col xs={24} lg={18}>
+          {/* Search Results Summary */}
+          <SearchResults
+            searchTerm={searchTerm}
+            totalResults={totalProducts}
+            activeFilters={activeFilters}
+            onClearSearch={handleClearSearch}
+            onClearFilters={handleClearFilters}
+          />
+
           {/* Search and Sort Controls */}
           <div style={{
             background: '#fff',
@@ -409,13 +675,49 @@ const ProductList = ({
             <Row gutter={[16, 16]} align="middle">
               {/* Search */}
               <Col xs={24} md={12}>
-                <Search
+                <AutoComplete
+                  value={searchInput}
+                  options={generateSearchSuggestions}
+                  onSearch={handleSearchInputChange}
+                  onSelect={handleSuggestionSelect}
                   placeholder="Tìm kiếm sản phẩm..."
-                  onSearch={handleSearch}
                   allowClear
                   size="large"
                   style={{ width: '100%' }}
-                />
+                  dropdownStyle={{
+                    maxHeight: 300,
+                    overflow: 'auto'
+                  }}
+                  filterOption={(inputValue, option) =>
+                    option.label.toLowerCase().includes(inputValue.toLowerCase())
+                  }
+                  onBlur={() => {
+                    setTimeout(() => setShowSuggestions(false), 200);
+                  }}
+                  onFocus={() => {
+                    if (searchInput.length >= 2) {
+                      setShowSuggestions(true);
+                    }
+                  }}
+                  notFoundContent={
+                    loadingSuggestions ? (
+                      <div style={{ textAlign: 'center', padding: '10px' }}>
+                        <Spin size="small" /> Đang tải gợi ý...
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: '10px', color: '#999' }}>
+                        Không tìm thấy gợi ý
+                      </div>
+                    )
+                  }
+                >
+                  <Input.Search
+                    onSearch={handleSearch}
+                    enterButton
+                    size="large"
+                    style={{ width: '100%' }}
+                  />
+                </AutoComplete>
               </Col>
               
               {/* Sort Controls */}

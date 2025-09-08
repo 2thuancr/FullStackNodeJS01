@@ -79,6 +79,17 @@ const getCategoryByIdApi = (id) => {
   return axios.get(URL_API);
 };
 
+// Fuzzy Search API functions
+const fuzzySearchProductsApi = (params = {}) => {
+  const URL_API = "/v1/api/products/fuzzy-search";
+  return axios.get(URL_API, { params });
+};
+
+const getSearchSuggestionsApi = (params = {}) => {
+  const URL_API = "/v1/api/products/search-suggestions";
+  return axios.get(URL_API, { params });
+};
+
 export { 
   createUserApi, 
   loginApi, 
@@ -91,7 +102,9 @@ export {
   getProductsApi,
   getProductByIdApi,
   getCategoriesApi,
-  getCategoryByIdApi
+  getCategoryByIdApi,
+  fuzzySearchProductsApi,
+  getSearchSuggestionsApi
 };
 
 // Default export cho backward compatibility
@@ -107,10 +120,13 @@ const api = {
   getProductsApi,
   getProductByIdApi,
   getCategoriesApi,
-  getCategoryByIdApi
+  getCategoryByIdApi,
+  fuzzySearchProductsApi,
+  getSearchSuggestionsApi
 };
 
 export default api;
+
 
 
 

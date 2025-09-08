@@ -1,4 +1,5 @@
 const productService = require('../services/productService');
+const elasticsearchService = require('../services/elasticsearchService');
 
 class ProductController {
     /**
@@ -231,6 +232,187 @@ class ProductController {
             res.status(500).json({
                 success: false,
                 message: 'Lỗi server khi lấy danh sách khoảng discount',
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Fuzzy search sản phẩm với Elasticsearch
+     * GET /api/products/fuzzy-search
+     */
+    async fuzzySearch(req, res) {
+        try {
+            const {
+                q: query,
+                page = 1,
+                limit = 10,
+                categoryId,
+                minPrice,
+                maxPrice,
+                minRating,
+                status,
+                sortBy = 'createdAt',
+                sortOrder = 'desc'
+            } = req.query;
+
+            // Validate required query parameter
+            if (!query || query.trim().length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Từ khóa tìm kiếm không được để trống'
+                });
+            }
+
+            // Validate pagination
+            const pageNum = parseInt(page);
+            const limitNum = parseInt(limit);
+
+            if (isNaN(pageNum) || pageNum < 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Số trang phải là số nguyên dương'
+                });
+            }
+
+            if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Số lượng sản phẩm mỗi trang phải từ 1 đến 100'
+                });
+            }
+
+            // Validate price range
+            const minPriceNum = minPrice ? parseFloat(minPrice) : undefined;
+            const maxPriceNum = maxPrice ? parseFloat(maxPrice) : undefined;
+
+            if (minPriceNum !== undefined && (isNaN(minPriceNum) || minPriceNum < 0)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Giá tối thiểu phải là số dương'
+                });
+            }
+
+            if (maxPriceNum !== undefined && (isNaN(maxPriceNum) || maxPriceNum < 0)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Giá tối đa phải là số dương'
+                });
+            }
+
+            if (minPriceNum !== undefined && maxPriceNum !== undefined && minPriceNum > maxPriceNum) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Giá tối thiểu không được lớn hơn giá tối đa'
+                });
+            }
+
+            // Validate rating
+            const minRatingNum = minRating ? parseFloat(minRating) : undefined;
+            if (minRatingNum !== undefined && (isNaN(minRatingNum) || minRatingNum < 0 || minRatingNum > 5)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Đánh giá tối thiểu phải từ 0 đến 5 sao'
+                });
+            }
+
+            // Validate status
+            const validStatuses = ['in_stock', 'out_of_stock', 'discontinued'];
+            if (status && !validStatuses.includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Trạng thái không hợp lệ. Chỉ chấp nhận: in_stock, out_of_stock, discontinued'
+                });
+            }
+
+            // Validate sort options
+            const validSortFields = ['name', 'price', 'createdAt', 'views', 'rating', 'discount', 'relevance'];
+            if (sortBy && !validSortFields.includes(sortBy)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Trường sắp xếp không hợp lệ'
+                });
+            }
+
+            const validSortOrders = ['asc', 'desc'];
+            if (sortOrder && !validSortOrders.includes(sortOrder.toLowerCase())) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Thứ tự sắp xếp không hợp lệ. Chỉ chấp nhận: asc, desc'
+                });
+            }
+
+            const result = await elasticsearchService.fuzzySearch(query.trim(), {
+                page: pageNum,
+                limit: limitNum,
+                categoryId: categoryId ? parseInt(categoryId) : undefined,
+                minPrice: minPriceNum,
+                maxPrice: maxPriceNum,
+                minRating: minRatingNum,
+                status,
+                sortBy,
+                sortOrder: sortOrder.toLowerCase()
+            });
+
+            if (!result.success) {
+                return res.status(500).json(result);
+            }
+
+            res.json({
+                success: true,
+                message: `Tìm thấy ${result.data.pagination.totalItems} sản phẩm cho từ khóa "${query}"`,
+                data: result.data
+            });
+
+        } catch (error) {
+            console.error('Error in ProductController.fuzzySearch:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi tìm kiếm sản phẩm',
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Lấy gợi ý từ khóa tìm kiếm
+     * GET /api/products/search-suggestions
+     */
+    async getSearchSuggestions(req, res) {
+        try {
+            const { q: query, limit = 5 } = req.query;
+
+            if (!query || query.trim().length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Từ khóa tìm kiếm không được để trống'
+                });
+            }
+
+            const limitNum = parseInt(limit);
+            if (isNaN(limitNum) || limitNum < 1 || limitNum > 20) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Số lượng gợi ý phải từ 1 đến 20'
+                });
+            }
+
+            const result = await elasticsearchService.getSearchSuggestions(query.trim(), limitNum);
+
+            if (!result.success) {
+                return res.status(500).json(result);
+            }
+
+            res.json({
+                success: true,
+                data: result.data
+            });
+
+        } catch (error) {
+            console.error('Error in ProductController.getSearchSuggestions:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi lấy gợi ý tìm kiếm',
                 error: error.message
             });
         }
