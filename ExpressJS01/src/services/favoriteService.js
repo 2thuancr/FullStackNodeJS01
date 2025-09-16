@@ -100,6 +100,11 @@ class FavoriteService {
      * Lấy danh sách sản phẩm yêu thích của user
      * @param {number} userId - ID của user
      * @param {Object} options - Tùy chọn phân trang và sắp xếp
+     * @param {number} options.page - Trang hiện tại
+     * @param {number} options.limit - Số sản phẩm mỗi trang
+     * @param {string} options.sortBy - Trường sắp xếp
+     * @param {string} options.sortOrder - Thứ tự sắp xếp
+     * @param {string} options.search - Tìm kiếm theo tên sản phẩm
      * @returns {Promise<Object>} - Danh sách sản phẩm yêu thích
      */
     async getFavoriteProducts(userId, options = {}) {
@@ -107,7 +112,8 @@ class FavoriteService {
             page = 1,
             limit = 10,
             sortBy = 'createdAt',
-            sortOrder = 'DESC'
+            sortOrder = 'DESC',
+            search
         } = options;
 
         try {
@@ -124,12 +130,20 @@ class FavoriteService {
                 order = [[{ model: Product, as: 'product' }, sortField, sortOrder.toUpperCase()]];
             }
 
+            // Xây dựng điều kiện where cho Product
+            const productWhere = { isActive: true };
+            if (search) {
+                productWhere.name = {
+                    [require('sequelize').Op.like]: `%${search}%`
+                };
+            }
+
             const result = await FavoriteProduct.findAndCountAll({
                 where: { userId },
                 include: [{
                     model: Product,
                     as: 'product',
-                    where: { isActive: true },
+                    where: productWhere,
                     include: [{
                         model: Category,
                         as: 'category',
@@ -163,6 +177,9 @@ class FavoriteService {
                         itemsPerPage: parseInt(limit),
                         hasNextPage: page < totalPages,
                         hasPrevPage: page > 1
+                    },
+                    filters: {
+                        search: search || null
                     }
                 }
             };

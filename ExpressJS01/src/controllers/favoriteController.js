@@ -82,7 +82,8 @@ class FavoriteController {
                 page = 1,
                 limit = 10,
                 sortBy = 'createdAt',
-                sortOrder = 'DESC'
+                sortOrder = 'DESC',
+                search
             } = req.query;
 
             // Validate pagination
@@ -103,12 +104,18 @@ class FavoriteController {
                 });
             }
 
+            // Map sortBy values
+            let mappedSortBy = sortBy;
+            if (sortBy === 'newest') {
+                mappedSortBy = 'createdAt';
+            }
+
             // Validate sort options
             const validSortFields = ['createdAt', 'name', 'price', 'rating', 'views'];
-            if (!validSortFields.includes(sortBy)) {
+            if (!validSortFields.includes(mappedSortBy)) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Trường sắp xếp không hợp lệ'
+                    message: 'Trường sắp xếp không hợp lệ. Các giá trị hợp lệ: createdAt, name, price, rating, views, newest'
                 });
             }
 
@@ -123,8 +130,9 @@ class FavoriteController {
             const result = await favoriteService.getFavoriteProducts(userId, {
                 page: pageNum,
                 limit: limitNum,
-                sortBy,
-                sortOrder: sortOrder.toUpperCase()
+                sortBy: mappedSortBy,
+                sortOrder: sortOrder.toUpperCase(),
+                search
             });
 
             if (!result.success) {

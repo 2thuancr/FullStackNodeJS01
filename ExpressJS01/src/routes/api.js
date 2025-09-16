@@ -1126,9 +1126,9 @@ router.delete('/favorites/:productId', auth, delay(300), favoriteController.remo
  *         name: sortBy
  *         schema:
  *           type: string
- *           enum: [createdAt, name, price, rating, views]
+ *           enum: [createdAt, name, price, rating, views, newest]
  *           default: createdAt
- *         description: Trường sắp xếp
+ *         description: Trường sắp xếp (newest = createdAt)
  *       - in: query
  *         name: sortOrder
  *         schema:
@@ -1136,6 +1136,11 @@ router.delete('/favorites/:productId', auth, delay(300), favoriteController.remo
  *           enum: [ASC, DESC]
  *           default: DESC
  *         description: Thứ tự sắp xếp
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Tìm kiếm theo tên sản phẩm
  *     responses:
  *       200:
  *         description: Lấy danh sách sản phẩm yêu thích thành công
