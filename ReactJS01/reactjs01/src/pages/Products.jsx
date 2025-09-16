@@ -6,7 +6,6 @@ import ProductList from '../components/ProductList';
 import FavoriteList from '../components/FavoriteList';
 import ViewedProducts from '../components/ViewedProducts';
 import SimilarProducts from '../components/SimilarProducts';
-import TestViewedProducts from '../components/TestViewedProducts';
 import { incrementProductViewApi, addToViewedProductsApi } from '../util/api';
 import { useViewedProducts } from '../components/context/ViewedProductsContext';
 
@@ -167,10 +166,6 @@ const Products = () => {
       {/* Tab Content */}
       {renderTabContent()}
 
-      {/* Test Component - Only show in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <TestViewedProducts />
-      )}
     </div>
   );
 };

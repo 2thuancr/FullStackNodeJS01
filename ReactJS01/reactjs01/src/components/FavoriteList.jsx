@@ -47,7 +47,7 @@ const FavoriteList = ({
   } = useFavorite();
   
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showClearModal, setShowClearModal] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -56,7 +56,6 @@ const FavoriteList = ({
   useEffect(() => {
     // Only load if we haven't loaded before and not currently loading
     if (!hasLoadedOnce && !loading) {
-      console.log('Loading favorites for the first time...');
       setHasLoadedOnce(true);
       loadFavorites({
         page: currentPage,
@@ -109,9 +108,6 @@ const FavoriteList = ({
   const handleRemoveFromFavorites = async (productId) => {
     const success = await removeFromFavorites(productId);
     // No need to reload favorites as it's handled in the context
-    if (success) {
-      console.log('Product removed from favorites successfully');
-    }
   };
 
   const handleClearAll = async () => {
@@ -246,7 +242,7 @@ const FavoriteList = ({
                 onChange={handleSortChange}
                 style={{ width: 150 }}
               >
-                <Option value="newest">Mới nhất</Option>
+                <Option value="createdAt">Mới nhất</Option>
                 <Option value="oldest">Cũ nhất</Option>
                 <Option value="name">Tên A-Z</Option>
                 <Option value="price_asc">Giá thấp-cao</Option>
