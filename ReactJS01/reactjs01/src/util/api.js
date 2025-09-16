@@ -163,7 +163,16 @@ const getMostViewedProductsApi = (params = {}) => {
 // Similar Products API functions
 const getSimilarProductsApi = (productId, params = {}) => {
   const URL_API = `/v1/api/products/${productId}/similar`;
-  return axios.get(URL_API, { params });
+  return axios.get(URL_API, { 
+    params: {
+      ...params,
+      _t: Date.now() // Add timestamp to prevent caching
+    },
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    }
+  });
 };
 
 // Product Statistics API functions

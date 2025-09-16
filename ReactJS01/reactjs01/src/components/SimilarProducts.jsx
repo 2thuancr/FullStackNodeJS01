@@ -42,12 +42,22 @@ const SimilarProducts = ({
       setLoading(true);
       const response = await getSimilarProductsApi(productId, { limit });
       if (response?.data?.success) {
-        const products = response.data.data.products || response.data.data;
-        setSimilarProducts(products);
+        // Handle the correct response structure
+        const data = response.data.data;
+        const products = data.similarProducts || data.products || data;
+        // Ensure products is always an array
+        setSimilarProducts(Array.isArray(products) ? products : []);
+      } else {
+        setSimilarProducts([]);
       }
     } catch (error) {
-      console.error('Error loading similar products:', error);
-      message.error('Không thể tải sản phẩm tương tự');
+      // Handle 304 Not Modified as success (cached response)
+      if (error.response?.status === 304) {
+        // Keep existing data, don't clear it
+        return;
+      }
+      setSimilarProducts([]);
+      // Silent error handling - don't show error message for similar products
     } finally {
       setLoading(false);
     }
@@ -156,7 +166,7 @@ const SimilarProducts = ({
     );
   }
 
-  if (similarProducts.length === 0) {
+  if (!Array.isArray(similarProducts) || similarProducts.length === 0) {
     return null; // Don't show anything if no similar products
   }
 
@@ -178,13 +188,13 @@ const SimilarProducts = ({
             </Button>
           </div>
           <Text type="secondary">
-            {similarProducts.length} sản phẩm tương tự được gợi ý
+            {Array.isArray(similarProducts) ? similarProducts.length : 0} sản phẩm tương tự được gợi ý
           </Text>
         </div>
       )}
       
       <Row gutter={[16, 16]}>
-        {similarProducts.map(renderProduct)}
+        {Array.isArray(similarProducts) && similarProducts.map(renderProduct)}
       </Row>
     </Card>
   );

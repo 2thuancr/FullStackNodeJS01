@@ -18,11 +18,6 @@ instance.interceptors.request.use(function (config) {
     
     if (token && !isPublicApi) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log('Adding token to request:', config.url, 'Token:', token.substring(0, 20) + '...');
-    } else if (!token && !isPublicApi) {
-        console.warn('No token found for protected API:', config.url);
-    } else if (isPublicApi) {
-        console.log('Public API, no token needed:', config.url);
     }
     
     return config;
