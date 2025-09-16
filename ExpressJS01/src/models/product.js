@@ -93,6 +93,21 @@ const Product = sequelize.define('Product', {
     status: {
         type: DataTypes.ENUM('in_stock', 'out_of_stock', 'discontinued'),
         defaultValue: 'in_stock'
+    },
+    // Thêm các trường mới cho thống kê
+    purchaseCount: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        validate: {
+            min: 0
+        }
+    },
+    commentCount: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        validate: {
+            min: 0
+        }
     }
 }, {
     tableName: 'products',

@@ -21,7 +21,9 @@ class ProductController {
                 maxDiscount,
                 minRating,
                 status,
-                popular
+                popular,
+                minViews,
+                maxViews
             } = req.query;
 
             // Validate parameters
@@ -65,6 +67,8 @@ class ProductController {
             const minDiscountNum = minDiscount ? parseFloat(minDiscount) : undefined;
             const maxDiscountNum = maxDiscount ? parseFloat(maxDiscount) : undefined;
             const popularBool = popular === 'true' ? true : popular === 'false' ? false : undefined;
+            const minViewsNum = minViews ? parseInt(minViews) : undefined;
+            const maxViewsNum = maxViews ? parseInt(maxViews) : undefined;
 
             // Validate price range
             if (minPriceNum !== undefined && (isNaN(minPriceNum) || minPriceNum < 0)) {
@@ -127,6 +131,28 @@ class ProductController {
                 });
             }
 
+            // Validate views range
+            if (minViewsNum !== undefined && (isNaN(minViewsNum) || minViewsNum < 0)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Số lượt xem tối thiểu phải là số dương'
+                });
+            }
+
+            if (maxViewsNum !== undefined && (isNaN(maxViewsNum) || maxViewsNum < 0)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Số lượt xem tối đa phải là số dương'
+                });
+            }
+
+            if (minViewsNum !== undefined && maxViewsNum !== undefined && minViewsNum > maxViewsNum) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Số lượt xem tối thiểu không được lớn hơn tối đa'
+                });
+            }
+
             const result = await productService.getProducts({
                 page: pageNum,
                 limit: limitNum,
@@ -140,7 +166,9 @@ class ProductController {
                 maxDiscount: maxDiscountNum,
                 minRating: minRatingNum,
                 status,
-                popular: popularBool
+                popular: popularBool,
+                minViews: minViewsNum,
+                maxViews: maxViewsNum
             });
 
             if (!result.success) {
@@ -413,6 +441,62 @@ class ProductController {
             res.status(500).json({
                 success: false,
                 message: 'Lỗi server khi lấy gợi ý tìm kiếm',
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Lấy danh sách các khoảng view count có sẵn
+     * GET /api/products/view-count-ranges
+     */
+    async getViewCountRanges(req, res) {
+        try {
+            const result = await productService.getViewCountRanges();
+
+            if (!result.success) {
+                return res.status(500).json(result);
+            }
+
+            res.json(result);
+        } catch (error) {
+            console.error('Error in ProductController.getViewCountRanges:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi lấy danh sách khoảng view count',
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Tăng view count cho sản phẩm
+     * POST /api/products/:id/increment-view
+     */
+    async incrementProductView(req, res) {
+        try {
+            const { id } = req.params;
+
+            if (!id || isNaN(parseInt(id))) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID sản phẩm không hợp lệ'
+                });
+            }
+
+            const result = await productService.incrementProductView(parseInt(id));
+
+            if (!result.success) {
+                const statusCode = result.message.includes('Không tìm thấy') ? 404 : 500;
+                return res.status(statusCode).json(result);
+            }
+
+            res.json(result);
+        } catch (error) {
+            console.error('Error in ProductController.incrementProductView:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi tăng view count',
                 error: error.message
             });
         }

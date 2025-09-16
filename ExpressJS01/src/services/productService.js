@@ -32,7 +32,9 @@ class ProductService {
             maxDiscount,
             minRating,
             status,
-            popular
+            popular,
+            minViews,
+            maxViews
         } = options;
 
         // Tính offset
@@ -92,6 +94,17 @@ class ProductService {
             where.views = {
                 [require('sequelize').Op.gte]: 5000 // Ngưỡng views để coi là phổ biến
             };
+        }
+
+        // Lọc theo khoảng view count
+        if (minViews !== undefined || maxViews !== undefined) {
+            where.views = {};
+            if (minViews !== undefined) {
+                where.views[require('sequelize').Op.gte] = minViews;
+            }
+            if (maxViews !== undefined) {
+                where.views[require('sequelize').Op.lte] = maxViews;
+            }
         }
 
         // Xây dựng điều kiện sắp xếp
@@ -244,6 +257,144 @@ class ProductService {
             return {
                 success: false,
                 message: 'Lỗi khi lấy danh sách khoảng discount',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Lấy danh sách các khoảng view count có sẵn
+     * @returns {Promise<Object>} - Danh sách khoảng view count
+     */
+    async getViewCountRanges() {
+        try {
+            const ranges = [
+                { 
+                    label: 'Dưới 1,000 lượt xem', 
+                    minViews: 0, 
+                    maxViews: 999, 
+                    description: 'Sản phẩm mới',
+                    color: '#2196F3',
+                    icon: '🆕'
+                },
+                { 
+                    label: '1,000 - 3,000 lượt xem', 
+                    minViews: 1000, 
+                    maxViews: 2999, 
+                    description: 'Sản phẩm đang phát triển',
+                    color: '#4CAF50',
+                    icon: '📈'
+                },
+                { 
+                    label: '3,000 - 5,000 lượt xem', 
+                    minViews: 3000, 
+                    maxViews: 4999, 
+                    description: 'Sản phẩm phổ biến',
+                    color: '#FF9800',
+                    icon: '⭐'
+                },
+                { 
+                    label: '5,000 - 10,000 lượt xem', 
+                    minViews: 5000, 
+                    maxViews: 9999, 
+                    description: 'Sản phẩm hot',
+                    color: '#FF5722',
+                    icon: '🔥'
+                },
+                { 
+                    label: 'Trên 10,000 lượt xem', 
+                    minViews: 10000, 
+                    maxViews: null, 
+                    description: 'Sản phẩm cực hot',
+                    color: '#E91E63',
+                    icon: '💥'
+                }
+            ];
+
+            // Đếm số sản phẩm trong mỗi khoảng
+            for (const range of ranges) {
+                const whereCondition = {
+                    isActive: true
+                };
+
+                if (range.minViews !== null) {
+                    whereCondition.views = { [require('sequelize').Op.gte]: range.minViews };
+                }
+                if (range.maxViews !== null) {
+                    whereCondition.views = {
+                        ...whereCondition.views,
+                        [require('sequelize').Op.lte]: range.maxViews
+                    };
+                }
+
+                const count = await Product.count({ where: whereCondition });
+                range.productCount = count;
+            }
+
+            return {
+                success: true,
+                data: ranges
+            };
+        } catch (error) {
+            console.error('Error in ProductService.getViewCountRanges:', error);
+            return {
+                success: false,
+                message: 'Lỗi khi lấy danh sách khoảng view count',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Tăng view count cho sản phẩm
+     * @param {number} id - ID sản phẩm
+     * @returns {Promise<Object>} - Kết quả tăng view count
+     */
+    async incrementProductView(id) {
+        try {
+            // Tìm sản phẩm trước
+            const product = await Product.findOne({
+                where: {
+                    id,
+                    isActive: true
+                }
+            });
+
+            if (!product) {
+                return {
+                    success: false,
+                    message: 'Không tìm thấy sản phẩm'
+                };
+            }
+
+            // Tăng view count
+            const updatedProduct = await Product.increment('views', {
+                where: {
+                    id,
+                    isActive: true
+                }
+            });
+
+            // Lấy view count mới
+            const updatedProductData = await Product.findOne({
+                where: { id },
+                attributes: ['id', 'name', 'views']
+            });
+
+            return {
+                success: true,
+                message: 'Tăng view count thành công',
+                data: {
+                    productId: id,
+                    productName: updatedProductData.name,
+                    newViewCount: updatedProductData.views
+                }
+            };
+        } catch (error) {
+            console.error('Error in ProductService.incrementProductView:', error);
+            return {
+                success: false,
+                message: 'Lỗi khi tăng view count',
                 error: error.message
             };
         }

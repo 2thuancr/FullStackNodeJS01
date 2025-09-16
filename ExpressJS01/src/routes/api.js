@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const productController = require('../controllers/productController');
+const favoriteController = require('../controllers/favoriteController');
+const viewedProductController = require('../controllers/viewedProductController');
 const { auth, adminAuth } = require('../middleware/auth');
 const delay = require('../middleware/delay');
 
@@ -228,7 +230,15 @@ router.post('/register', delay(500), userController.register);
  * @swagger
  * /v1/api/login:
  *   post:
- *     summary: Đăng nhập user
+ *     summary: Đăng nhập user và lấy JWT token
+ *     description: |
+ *       **Hướng dẫn sử dụng token trong Swagger:**
+ *       1. Gọi API này với email và password để lấy token
+ *       2. Copy token từ response (không bao gồm "Bearer ")
+ *       3. Click nút "Authorize" (🔒) ở trên cùng Swagger UI
+ *       4. Paste token vào trường "Value"
+ *       5. Click "Authorize" và "Close"
+ *       6. Bây giờ có thể test các API cần authentication
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -551,11 +561,23 @@ router.get('/check-email-verification/:email', userController.checkEmailVerifica
  *           type: string
  *           enum: [in_stock, out_of_stock, discontinued]
  *         description: Trạng thái sản phẩm
- *       - in: query
- *         name: popular
- *         schema:
- *           type: boolean
- *         description: Sản phẩm phổ biến (lượt xem cao)
+     *       - in: query
+     *         name: popular
+     *         schema:
+     *           type: boolean
+     *         description: Sản phẩm phổ biến (lượt xem cao)
+     *       - in: query
+     *         name: minViews
+     *         schema:
+     *           type: integer
+     *           minimum: 0
+     *         description: Số lượt xem tối thiểu
+     *       - in: query
+     *         name: maxViews
+     *         schema:
+     *           type: integer
+     *           minimum: 0
+     *         description: Số lượt xem tối đa
  *     responses:
  *       200:
  *         description: Lấy danh sách sản phẩm thành công
@@ -793,6 +815,102 @@ router.get('/products/search-suggestions', productController.getSearchSuggestion
 
 router.get('/products/discount-ranges', productController.getDiscountRanges);
 
+/**
+ * @swagger
+ * /v1/api/products/view-count-ranges:
+ *   get:
+ *     summary: Lấy danh sách các khoảng view count có sẵn
+ *     tags: [Products]
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách khoảng view count thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       label:
+ *                         type: string
+ *                         example: "Dưới 1,000 lượt xem"
+ *                       minViews:
+ *                         type: integer
+ *                         example: 0
+ *                       maxViews:
+ *                         type: integer
+ *                         nullable: true
+ *                         example: 999
+ *                       description:
+ *                         type: string
+ *                         example: "Sản phẩm mới"
+ *                       color:
+ *                         type: string
+ *                         example: "#2196F3"
+ *                       icon:
+ *                         type: string
+ *                         example: "🆕"
+ *                       productCount:
+ *                         type: integer
+ *                         example: 15
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/products/view-count-ranges', productController.getViewCountRanges);
+
+/**
+ * @swagger
+ * /v1/api/products/{id}/increment-view:
+ *   post:
+ *     summary: Tăng view count cho sản phẩm
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID sản phẩm
+ *     responses:
+ *       200:
+ *         description: Tăng view count thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Tăng view count thành công
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     productId:
+ *                       type: integer
+ *                       example: 1
+ *                     productName:
+ *                       type: string
+ *                       example: iPhone 15 Pro Max
+ *                     newViewCount:
+ *                       type: integer
+ *                       example: 1250
+ *       400:
+ *         description: ID sản phẩm không hợp lệ
+ *       404:
+ *         description: Không tìm thấy sản phẩm
+ *       500:
+ *         description: Lỗi server
+ */
+router.post('/products/:id/increment-view', productController.incrementProductView);
+
 router.get('/products/:id', productController.getProductById);
 
 /**
@@ -819,5 +937,955 @@ router.get('/products/:id', productController.getProductById);
  *         description: Lỗi server
  */
 router.get('/categories', productController.getCategories);
+
+// ==================== FAVORITE PRODUCTS ROUTES ====================
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     FavoriteProduct:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Favorite ID
+ *         userId:
+ *           type: integer
+ *           description: User ID
+ *         productId:
+ *           type: integer
+ *           description: Product ID
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Thời gian thêm vào yêu thích
+ *         product:
+ *           $ref: '#/components/schemas/Product'
+ *     AddFavoriteRequest:
+ *       type: object
+ *       required:
+ *         - productId
+ *       properties:
+ *         productId:
+ *           type: integer
+ *           description: ID sản phẩm cần thêm vào yêu thích
+ *     FavoriteListResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         data:
+ *           type: object
+ *           properties:
+ *             favorites:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   addedAt:
+ *                     type: string
+ *                     format: date-time
+ *                   product:
+ *                     $ref: '#/components/schemas/Product'
+ *             pagination:
+ *               $ref: '#/components/schemas/Pagination'
+ */
+
+/**
+ * @swagger
+ * /v1/api/favorites:
+ *   post:
+ *     summary: Thêm sản phẩm vào danh sách yêu thích
+ *     tags: [Favorites]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *         description: JWT token để xác thực (lấy từ API /v1/api/login)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AddFavoriteRequest'
+ *     responses:
+ *       201:
+ *         description: Thêm sản phẩm vào yêu thích thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Đã thêm sản phẩm vào danh sách yêu thích
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     favoriteId:
+ *                       type: integer
+ *                     productId:
+ *                       type: integer
+ *                     productName:
+ *                       type: string
+ *       400:
+ *         description: Dữ liệu không hợp lệ hoặc sản phẩm đã có trong yêu thích
+ *       404:
+ *         description: Sản phẩm không tồn tại
+ *       401:
+ *         description: Không có token hoặc token không hợp lệ
+ */
+router.post('/favorites', auth, delay(300), favoriteController.addToFavorites);
+
+/**
+ * @swagger
+ * /v1/api/favorites/{productId}:
+ *   delete:
+ *     summary: Xóa sản phẩm khỏi danh sách yêu thích
+ *     tags: [Favorites]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID sản phẩm cần xóa khỏi yêu thích
+ *     responses:
+ *       200:
+ *         description: Xóa sản phẩm khỏi yêu thích thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Đã xóa sản phẩm khỏi danh sách yêu thích
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     productId:
+ *                       type: integer
+ *       400:
+ *         description: ID sản phẩm không hợp lệ
+ *       404:
+ *         description: Sản phẩm không có trong danh sách yêu thích
+ *       401:
+ *         description: Không có token hoặc token không hợp lệ
+ */
+router.delete('/favorites/:productId', auth, delay(300), favoriteController.removeFromFavorites);
+
+/**
+ * @swagger
+ * /v1/api/favorites:
+ *   get:
+ *     summary: Lấy danh sách sản phẩm yêu thích
+ *     tags: [Favorites]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *         description: JWT token để xác thực (lấy từ API /v1/api/login)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Số sản phẩm mỗi trang
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [createdAt, name, price, rating, views]
+ *           default: createdAt
+ *         description: Trường sắp xếp
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: DESC
+ *         description: Thứ tự sắp xếp
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách sản phẩm yêu thích thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FavoriteListResponse'
+ *       400:
+ *         description: Tham số không hợp lệ
+ *       401:
+ *         description: Không có token hoặc token không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/favorites', auth, favoriteController.getFavoriteProducts);
+
+/**
+ * @swagger
+ * /v1/api/favorites/check/{productId}:
+ *   get:
+ *     summary: Kiểm tra trạng thái yêu thích của sản phẩm
+ *     tags: [Favorites]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID sản phẩm cần kiểm tra
+ *     responses:
+ *       200:
+ *         description: Kiểm tra trạng thái yêu thích thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     isFavorite:
+ *                       type: boolean
+ *                       example: true
+ *                     favoriteId:
+ *                       type: integer
+ *                       nullable: true
+ *                       example: 123
+ *       400:
+ *         description: ID sản phẩm không hợp lệ
+ *       401:
+ *         description: Không có token hoặc token không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/favorites/check/:productId', auth, favoriteController.checkFavoriteStatus);
+
+/**
+ * @swagger
+ * /v1/api/favorites/count:
+ *   get:
+ *     summary: Lấy số lượng sản phẩm yêu thích
+ *     tags: [Favorites]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lấy số lượng sản phẩm yêu thích thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     favoriteCount:
+ *                       type: integer
+ *                       example: 15
+ *       401:
+ *         description: Không có token hoặc token không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/favorites/count', auth, favoriteController.getFavoriteCount);
+
+/**
+ * @swagger
+ * /v1/api/favorites/product/{productId}/users:
+ *   get:
+ *     summary: Lấy danh sách user đã yêu thích sản phẩm (admin only)
+ *     tags: [Favorites, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID sản phẩm
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Số user mỗi trang
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách user yêu thích sản phẩm thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     users:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           favoriteId:
+ *                             type: integer
+ *                           addedAt:
+ *                             type: string
+ *                             format: date-time
+ *                           user:
+ *                             $ref: '#/components/schemas/User'
+ *                     pagination:
+ *                       $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         description: ID sản phẩm không hợp lệ
+ *       401:
+ *         description: Không có token hoặc token không hợp lệ
+ *       403:
+ *         description: Không có quyền admin
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/favorites/product/:productId/users', auth, adminAuth, favoriteController.getProductFavorites);
+
+/**
+ * @swagger
+ * /v1/api/favorites/clear:
+ *   delete:
+ *     summary: Xóa tất cả sản phẩm yêu thích
+ *     tags: [Favorites]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Xóa tất cả sản phẩm yêu thích thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Đã xóa 15 sản phẩm khỏi danh sách yêu thích
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     deletedCount:
+ *                       type: integer
+ *                       example: 15
+ *       401:
+ *         description: Không có token hoặc token không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.delete('/favorites/clear', auth, delay(500), favoriteController.clearAllFavorites);
+
+// ==================== VIEWED PRODUCTS ROUTES ====================
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     ViewedProduct:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: View ID
+ *         userId:
+ *           type: integer
+ *           nullable: true
+ *           description: User ID (null for guest)
+ *         productId:
+ *           type: integer
+ *           description: Product ID
+ *         viewedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Thời gian xem
+ *         ipAddress:
+ *           type: string
+ *           nullable: true
+ *           description: IP address
+ *         sessionId:
+ *           type: string
+ *           nullable: true
+ *           description: Session ID cho guest
+ *         product:
+ *           $ref: '#/components/schemas/Product'
+ *     TrackViewRequest:
+ *       type: object
+ *       required:
+ *         - productId
+ *       properties:
+ *         productId:
+ *           type: integer
+ *           description: ID sản phẩm cần ghi nhận lượt xem
+ *     ViewedListResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         data:
+ *           type: object
+ *           properties:
+ *             viewedProducts:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   viewedAt:
+ *                     type: string
+ *                     format: date-time
+ *                   product:
+ *                     $ref: '#/components/schemas/Product'
+ *             pagination:
+ *               $ref: '#/components/schemas/Pagination'
+ *             filters:
+ *               type: object
+ *               properties:
+ *                 days:
+ *                   type: integer
+ *                 startDate:
+ *                   type: string
+ *                   format: date-time
+ *                 endDate:
+ *                   type: string
+ *                   format: date-time
+ *     Pagination:
+ *       type: object
+ *       properties:
+ *         currentPage:
+ *           type: integer
+ *           description: Trang hiện tại
+ *         totalPages:
+ *           type: integer
+ *           description: Tổng số trang
+ *         totalItems:
+ *           type: integer
+ *           description: Tổng số items
+ *         itemsPerPage:
+ *           type: integer
+ *           description: Số items mỗi trang
+ *         hasNextPage:
+ *           type: boolean
+ *           description: Có trang tiếp theo không
+ *         hasPrevPage:
+ *           type: boolean
+ *           description: Có trang trước không
+ */
+
+/**
+ * @swagger
+ * /v1/api/viewed-products:
+ *   post:
+ *     summary: Ghi nhận sản phẩm đã xem
+ *     tags: [Viewed Products]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/TrackViewRequest'
+ *     responses:
+ *       201:
+ *         description: Ghi nhận lượt xem thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Đã ghi nhận lượt xem sản phẩm
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     viewId:
+ *                       type: integer
+ *                     productId:
+ *                       type: integer
+ *                     isNewView:
+ *                       type: boolean
+ *       400:
+ *         description: Dữ liệu không hợp lệ
+ *       404:
+ *         description: Sản phẩm không tồn tại
+ */
+router.post('/viewed-products', delay(200), viewedProductController.trackProductView);
+
+/**
+ * @swagger
+ * /v1/api/viewed-products:
+ *   get:
+ *     summary: Lấy lịch sử xem sản phẩm của user
+ *     tags: [Viewed Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *         description: JWT token để xác thực (lấy từ API /v1/api/login)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Số sản phẩm mỗi trang
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [viewedAt, name, price, rating]
+ *           default: viewedAt
+ *         description: Trường sắp xếp
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: DESC
+ *         description: Thứ tự sắp xếp
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 365
+ *           default: 30
+ *         description: Số ngày gần đây để lấy lịch sử
+ *     responses:
+ *       200:
+ *         description: Lấy lịch sử xem sản phẩm thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ViewedListResponse'
+ *       400:
+ *         description: Tham số không hợp lệ
+ *       401:
+ *         description: Không có token hoặc token không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/viewed-products', auth, viewedProductController.getViewedProducts);
+
+/**
+ * @swagger
+ * /v1/api/viewed-products/guest:
+ *   get:
+ *     summary: Lấy lịch sử xem sản phẩm của guest
+ *     tags: [Viewed Products]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: Số sản phẩm mỗi trang
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 30
+ *           default: 7
+ *         description: Số ngày gần đây để lấy lịch sử
+ *     responses:
+ *       200:
+ *         description: Lấy lịch sử xem sản phẩm của guest thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ViewedListResponse'
+ *       400:
+ *         description: Tham số không hợp lệ hoặc không có session ID
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/viewed-products/guest', viewedProductController.getGuestViewedProducts);
+
+/**
+ * @swagger
+ * /v1/api/viewed-products:
+ *   delete:
+ *     summary: Xóa lịch sử xem sản phẩm
+ *     tags: [Viewed Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: productId
+ *         schema:
+ *           type: integer
+ *         description: ID sản phẩm cần xóa (nếu không có thì xóa tất cả)
+ *     responses:
+ *       200:
+ *         description: Xóa lịch sử xem sản phẩm thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Đã xóa 15 lượt xem khỏi lịch sử
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     deletedCount:
+ *                       type: integer
+ *                       example: 15
+ *       400:
+ *         description: ID sản phẩm không hợp lệ
+ *       401:
+ *         description: Không có token hoặc token không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.delete('/viewed-products', auth, delay(300), viewedProductController.clearViewedHistory);
+
+/**
+ * @swagger
+ * /v1/api/viewed-products/statistics:
+ *   get:
+ *     summary: Lấy thống kê xem sản phẩm
+ *     tags: [Viewed Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 365
+ *           default: 30
+ *         description: Số ngày gần đây để thống kê
+ *     responses:
+ *       200:
+ *         description: Lấy thống kê xem sản phẩm thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalViews:
+ *                       type: integer
+ *                       example: 150
+ *                     uniqueProducts:
+ *                       type: integer
+ *                       example: 25
+ *                     mostViewed:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           product:
+ *                             $ref: '#/components/schemas/Product'
+ *                           viewCount:
+ *                             type: integer
+ *                     dailyStats:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           date:
+ *                             type: string
+ *                             format: date
+ *                           viewCount:
+ *                             type: integer
+ *                     period:
+ *                       type: object
+ *                       properties:
+ *                         days:
+ *                           type: integer
+ *                         startDate:
+ *                           type: string
+ *                           format: date-time
+ *                         endDate:
+ *                           type: string
+ *                           format: date-time
+ *       400:
+ *         description: Tham số không hợp lệ
+ *       401:
+ *         description: Không có token hoặc token không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/viewed-products/statistics', auth, viewedProductController.getViewStatistics);
+
+/**
+ * @swagger
+ * /v1/api/viewed-products/most-viewed:
+ *   get:
+ *     summary: Lấy danh sách sản phẩm được xem nhiều nhất (admin)
+ *     tags: [Viewed Products, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Số sản phẩm mỗi trang
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 365
+ *           default: 30
+ *         description: Số ngày gần đây để thống kê
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách sản phẩm được xem nhiều nhất thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     mostViewed:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           product:
+ *                             $ref: '#/components/schemas/Product'
+ *                           viewCount:
+ *                             type: integer
+ *                           lastViewedAt:
+ *                             type: string
+ *                             format: date-time
+ *                     pagination:
+ *                       $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         description: Tham số không hợp lệ
+ *       401:
+ *         description: Không có token hoặc token không hợp lệ
+ *       403:
+ *         description: Không có quyền admin
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/viewed-products/most-viewed', auth, adminAuth, viewedProductController.getMostViewedProducts);
+
+// ==================== DEBUG/ADMIN ROUTES ====================
+
+/**
+ * @swagger
+ * /v1/api/debug/favorites:
+ *   get:
+ *     summary: Debug - Xem tất cả sản phẩm yêu thích (không cần auth)
+ *     tags: [Debug]
+ *     responses:
+ *       200:
+ *         description: Danh sách tất cả sản phẩm yêu thích
+ */
+router.get('/debug/favorites', async (req, res) => {
+    try {
+        const { FavoriteProduct, Product, User } = require('../models');
+        
+        const favorites = await FavoriteProduct.findAll({
+            include: [
+                {
+                    model: Product,
+                    as: 'product',
+                    attributes: ['id', 'name', 'price', 'imageUrl']
+                },
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'username', 'email']
+                }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit: 20
+        });
+
+        res.json({
+            success: true,
+            message: 'Debug: Tất cả sản phẩm yêu thích',
+            data: {
+                total: favorites.length,
+                favorites: favorites.map(fav => ({
+                    id: fav.id,
+                    userId: fav.userId,
+                    productId: fav.productId,
+                    addedAt: fav.createdAt,
+                    user: fav.user,
+                    product: fav.product
+                }))
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy dữ liệu debug',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /v1/api/debug/viewed:
+ *   get:
+ *     summary: Debug - Xem tất cả lượt xem sản phẩm (không cần auth)
+ *     tags: [Debug]
+ *     responses:
+ *       200:
+ *         description: Danh sách tất cả lượt xem
+ */
+router.get('/debug/viewed', async (req, res) => {
+    try {
+        const { ViewedProduct, Product, User } = require('../models');
+        
+        const viewed = await ViewedProduct.findAll({
+            include: [
+                {
+                    model: Product,
+                    as: 'product',
+                    attributes: ['id', 'name', 'price', 'imageUrl']
+                },
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'username', 'email']
+                }
+            ],
+            order: [['viewedAt', 'DESC']],
+            limit: 20
+        });
+
+        res.json({
+            success: true,
+            message: 'Debug: Tất cả lượt xem sản phẩm',
+            data: {
+                total: viewed.length,
+                viewed: viewed.map(view => ({
+                    id: view.id,
+                    userId: view.userId,
+                    productId: view.productId,
+                    viewedAt: view.viewedAt,
+                    sessionId: view.sessionId,
+                    user: view.user,
+                    product: view.product
+                }))
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy dữ liệu debug',
+            error: error.message
+        });
+    }
+});
 
 module.exports = router;

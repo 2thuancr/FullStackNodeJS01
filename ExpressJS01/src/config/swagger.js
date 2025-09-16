@@ -23,7 +23,8 @@ const options = {
                 bearerAuth: {
                     type: 'http',
                     scheme: 'bearer',
-                    bearerFormat: 'JWT'
+                    bearerFormat: 'JWT',
+                    description: 'Nhập JWT token để xác thực. Lấy token từ API /v1/api/login'
                 }
             }
         }
@@ -34,6 +35,10 @@ const options = {
 const specs = swaggerJsdoc(options);
 
 module.exports = specs;
+
+
+
+
 
 
 
