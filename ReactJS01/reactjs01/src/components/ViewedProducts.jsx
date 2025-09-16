@@ -55,42 +55,73 @@ const ViewedProducts = ({
   
   const { user } = useAuth();
 
-  // Remove this useEffect since loadViewedProducts is already called in ViewedProductsContext
-  // useEffect(() => {
-  //   console.log('ViewedProducts component mounted, reloading...');
-  //   loadViewedProducts();
-  // }, [loadViewedProducts]);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('viewedAt');
   const [searchTerm, setSearchTerm] = useState('');
   const [showClearModal, setShowClearModal] = useState(false);
   const [activeTab, setActiveTab] = useState('recent'); // recent, most-viewed
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
-  // Remove this useEffect since loadViewedProducts is already called in ViewedProductsContext
-  // useEffect(() => {
-  //   loadViewedProducts({
-  //     page: currentPage,
-  //     limit: pageSize,
-  //     sortBy,
-  //     sortOrder: 'DESC',
-  //     days: 30,
-  //     search: searchTerm
-  //   });
-  // }, [currentPage, sortBy, searchTerm, loadViewedProducts, pageSize]);
+  // Load viewed products only once when component mounts
+  useEffect(() => {
+    // Only load if we haven't loaded before and not currently loading
+    if (!hasLoadedOnce && !loading) {
+      console.log('Loading viewed products for the first time...');
+      setHasLoadedOnce(true);
+      loadViewedProducts({
+        page: currentPage,
+        limit: pageSize,
+        sortBy,
+        sortOrder: 'DESC',
+        days: 30,
+        search: searchTerm
+      });
+    }
+  }, [hasLoadedOnce, loading]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
+    // Only call API if we have data and user is changing page
+    if (viewedProducts.length > 0) {
+      loadViewedProducts({
+        page,
+        limit: pageSize,
+        sortBy,
+        sortOrder: 'DESC',
+        days: 30,
+        search: searchTerm
+      });
+    }
   };
 
   const handleSortChange = (value) => {
     setSortBy(value);
     setCurrentPage(1);
-    // No need to call loadViewedProducts as it's handled in context
+    // Only call API if we have data and user is changing sort
+    if (viewedProducts.length > 0) {
+      loadViewedProducts({
+        page: 1,
+        limit: pageSize,
+        sortBy: value,
+        sortOrder: 'DESC',
+        days: 30,
+        search: searchTerm
+      });
+    }
   };
 
   const handleSearch = (value) => {
     setSearchTerm(value);
     setCurrentPage(1);
+    // Always call API for search as it's a new query
+    loadViewedProducts({
+      page: 1,
+      limit: pageSize,
+      sortBy,
+      sortOrder: 'DESC',
+      days: 30,
+      search: value
+    });
   };
 
   const handleClearHistory = async () => {

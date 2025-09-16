@@ -60,6 +60,13 @@ const Products = () => {
     message.success(`Đã thêm ${product.name} vào giỏ hàng`);
   };
 
+  // Reset loading flags when switching tabs
+  const handleTabChange = (key) => {
+    setActiveTab(key);
+    // Force re-render of components when switching tabs
+    console.log('Switching to tab:', key);
+  };
+
 
   const tabItems = [
     {
@@ -84,6 +91,7 @@ const Products = () => {
       case 'favorites':
         return (
           <FavoriteList
+            key="favorites" // Add key to force re-render when switching tabs
             onViewProduct={handleViewProduct}
             onAddToCart={handleAddToCart}
           />
@@ -91,6 +99,7 @@ const Products = () => {
       case 'viewed':
         return (
           <ViewedProducts
+            key="viewed" // Add key to force re-render when switching tabs
             onViewProduct={handleViewProduct}
             onAddToCart={handleAddToCart}
           />
@@ -98,6 +107,7 @@ const Products = () => {
       case 'products':
         return (
           <ProductList
+            key="products" // Add key to force re-render when switching tabs
             useLazyLoading={useLazyLoading}
             onViewProduct={handleViewProduct}
             onAddToCart={handleAddToCart}
@@ -148,7 +158,7 @@ const Products = () => {
       <Card style={{ marginBottom: 24 }}>
         <Tabs
           activeKey={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           items={tabItems}
           size="large"
         />

@@ -50,44 +50,54 @@ const FavoriteList = ({
   const [sortBy, setSortBy] = useState('newest');
   const [searchTerm, setSearchTerm] = useState('');
   const [showClearModal, setShowClearModal] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
-  // Remove this useEffect since loadFavorites is already called in FavoriteContext
-  // useEffect(() => {
-  //   // Only load if we have a user and not already loading
-  //   if (favorites.length === 0 && !loading) {
-  //     loadFavorites({
-  //       page: currentPage,
-  //       limit: pageSize,
-  //       sortBy,
-  //       search: searchTerm
-  //     });
-  //   }
-  // }, [currentPage, sortBy, searchTerm, loadFavorites, pageSize, favorites.length, loading]);
+  // Load favorites only once when component mounts
+  useEffect(() => {
+    // Only load if we haven't loaded before and not currently loading
+    if (!hasLoadedOnce && !loading) {
+      console.log('Loading favorites for the first time...');
+      setHasLoadedOnce(true);
+      loadFavorites({
+        page: currentPage,
+        limit: pageSize,
+        sortBy,
+        search: searchTerm
+      });
+    }
+  }, [hasLoadedOnce, loading]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    loadFavorites({
-      page,
-      limit: pageSize,
-      sortBy,
-      search: searchTerm
-    });
+    // Only call API if we have data and user is changing page
+    if (favorites.length > 0) {
+      loadFavorites({
+        page,
+        limit: pageSize,
+        sortBy,
+        search: searchTerm
+      });
+    }
   };
 
   const handleSortChange = (value) => {
     setSortBy(value);
     setCurrentPage(1);
-    loadFavorites({
-      page: 1,
-      limit: pageSize,
-      sortBy: value,
-      search: searchTerm
-    });
+    // Only call API if we have data and user is changing sort
+    if (favorites.length > 0) {
+      loadFavorites({
+        page: 1,
+        limit: pageSize,
+        sortBy: value,
+        search: searchTerm
+      });
+    }
   };
 
   const handleSearch = (value) => {
     setSearchTerm(value);
     setCurrentPage(1);
+    // Always call API for search as it's a new query
     loadFavorites({
       page: 1,
       limit: pageSize,
