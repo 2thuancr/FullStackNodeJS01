@@ -1551,6 +1551,10 @@ router.get('/viewed-products', auth, viewedProductController.getViewedProducts);
  * /v1/api/viewed-products/guest:
  *   get:
  *     summary: Lấy lịch sử xem sản phẩm của guest
+ *     description: |
+ *       API này dành cho guest (không cần đăng nhập). 
+ *       Session ID sẽ được tạo tự động dựa trên IP và User-Agent nếu không có.
+ *       Session ID sẽ được trả về trong response để client có thể sử dụng cho các request tiếp theo.
  *     tags: [Viewed Products]
  *     parameters:
  *       - in: query
@@ -1576,15 +1580,45 @@ router.get('/viewed-products', auth, viewedProductController.getViewedProducts);
  *           maximum: 30
  *           default: 7
  *         description: Số ngày gần đây để lấy lịch sử
+ *       - in: header
+ *         name: X-Session-ID
+ *         schema:
+ *           type: string
+ *         description: Session ID (tùy chọn, sẽ được tạo tự động nếu không có)
  *     responses:
  *       200:
  *         description: Lấy lịch sử xem sản phẩm của guest thành công
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ViewedListResponse'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     viewedProducts:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           viewedAt:
+ *                             type: string
+ *                             format: date-time
+ *                           product:
+ *                             $ref: '#/components/schemas/Product'
+ *                     pagination:
+ *                       $ref: '#/components/schemas/Pagination'
+ *                     sessionId:
+ *                       type: string
+ *                       description: Session ID được tạo tự động hoặc sử dụng từ header
+ *                       example: "a1b2c3d4e5f6"
  *       400:
- *         description: Tham số không hợp lệ hoặc không có session ID
+ *         description: Tham số không hợp lệ
  *       500:
  *         description: Lỗi server
  */

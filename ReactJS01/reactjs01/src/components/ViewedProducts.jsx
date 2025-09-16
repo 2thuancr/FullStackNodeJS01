@@ -49,9 +49,6 @@ const ViewedProducts = ({
     clearViewedHistory 
   } = useViewedProducts();
 
-  // Debug log
-  console.log('ViewedProducts component - viewedProducts:', viewedProducts);
-  console.log('ViewedProducts component - loading:', loading);
   
   const { user } = useAuth();
 
@@ -66,7 +63,6 @@ const ViewedProducts = ({
   useEffect(() => {
     // Only load if we haven't loaded before and not currently loading
     if (!hasLoadedOnce && !loading) {
-      console.log('Loading viewed products for the first time...');
       setHasLoadedOnce(true);
       loadViewedProducts({
         page: currentPage,

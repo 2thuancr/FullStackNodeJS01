@@ -34,13 +34,11 @@ export const ViewedProductsProvider = ({ children }) => {
   // Load viewed products when user changes
   useEffect(() => {
     if (user) {
-      console.log('User changed, loading viewed products for:', user.id);
       retryCountRef.current = 0; // Reset retry count when user changes
       loadViewedProducts();
       loadMostViewedProducts();
       loadStatistics();
     } else {
-      console.log('No user, clearing viewed products');
       setViewedProducts([]);
       setMostViewedProducts([]);
       setStatistics(null);
@@ -51,22 +49,17 @@ export const ViewedProductsProvider = ({ children }) => {
   const loadViewedProducts = async (params = {}) => {
     // Prevent multiple simultaneous calls
     if (loadingRef.current) {
-      console.log('Already loading viewed products, skipping...');
       return;
     }
     
     // Check retry count for 400 errors
     if (retryCountRef.current >= maxRetries) {
-      console.log('Max retries reached, skipping viewed products load');
       return;
     }
     
     try {
       setLoading(true);
       loadingRef.current = true;
-      console.log('Loading viewed products for user:', user?.id);
-      console.log('User object:', user);
-      console.log('User ID type:', typeof user?.id);
       
       // Use the correct parameters as per your documentation
       const apiParams = {
@@ -79,14 +72,10 @@ export const ViewedProductsProvider = ({ children }) => {
       if (params.sortBy) apiParams.sortBy = params.sortBy;
       if (params.sortOrder) apiParams.sortOrder = params.sortOrder;
       
-      console.log('API params being sent:', apiParams);
-      
-      // Try guest API first since userId might be NULL in DB
-      const response = await getGuestViewedProductsApi(apiParams);
-      
-      console.log('Viewed products API response:', response);
-      console.log('Response data:', response?.data);
-      console.log('Response data.data:', response?.data?.data);
+      // Use user API if user is logged in, otherwise use guest API
+      const response = user 
+        ? await getViewedProductsApi(apiParams)
+        : await getGuestViewedProductsApi(apiParams);
       
       if (response?.data?.success) {
         // Try different possible data structures
@@ -102,32 +91,15 @@ export const ViewedProductsProvider = ({ children }) => {
           viewedData = [response.data.data];
         }
         
-        console.log('Extracted viewed data:', viewedData);
-        console.log('Is array?', Array.isArray(viewedData));
-        console.log('Length:', viewedData?.length);
-        
-        // Check if data is empty and log details
-        if (viewedData.length === 0) {
-          console.log('No viewed products found. Possible reasons:');
-          console.log('1. User not authenticated properly');
-          console.log('2. No products viewed by this user');
-          console.log('3. Backend filtering by userId but userId is NULL in DB');
-          console.log('4. API parameters not matching backend expectations');
-        }
-        
         setViewedProducts(Array.isArray(viewedData) ? viewedData : []);
         retryCountRef.current = 0; // Reset retry count on success
       } else {
-        console.log('API response not successful:', response?.data);
         setViewedProducts([]);
       }
     } catch (error) {
-      console.error('Error loading viewed products:', error);
-      
       // Increment retry count for 400 errors
       if (error.response?.status === 400) {
         retryCountRef.current += 1;
-        console.log(`400 Bad Request - Retry count: ${retryCountRef.current}/${maxRetries}`);
       }
       
       // Prevent spam error messages - only show once every 5 seconds
@@ -140,11 +112,7 @@ export const ViewedProductsProvider = ({ children }) => {
         // Only show error message if it's not a network error or 400 error
         if (error.code !== 'ERR_NETWORK' && error.response?.status !== 404 && error.response?.status !== 400) {
           message.error('Không thể tải lịch sử xem sản phẩm');
-        } else if (error.response?.status === 400) {
-          console.log('400 Bad Request - API might not be ready or wrong parameters');
         }
-      } else {
-        console.log('Suppressing error message to prevent spam');
       }
       
       setViewedProducts([]);
@@ -162,7 +130,7 @@ export const ViewedProductsProvider = ({ children }) => {
         setMostViewedProducts(mostViewedData);
       }
     } catch (error) {
-      console.error('Error loading most viewed products:', error);
+      // Silent error handling for most viewed products
     }
   };
 
@@ -175,32 +143,26 @@ export const ViewedProductsProvider = ({ children }) => {
         setStatistics(response.data.data);
       }
     } catch (error) {
-      console.error('Error loading viewed statistics:', error);
+      // Silent error handling for statistics
     }
   };
 
   const addToViewedProducts = async (productId) => {
     if (!productId) {
-      console.warn('No product ID provided to addToViewedProducts');
       return false;
     }
     
     try {
-      console.log('Adding product to viewed:', productId);
       const response = await addToViewedProductsApi(productId);
-      console.log('Add to viewed API response:', response);
       
       if (response?.data?.success) {
         // Reload viewed products to get updated list
         await loadViewedProducts();
-        console.log('Successfully added product to viewed history');
         return true;
       } else {
-        console.log('API response not successful:', response?.data);
         return false;
       }
     } catch (error) {
-      console.error('Error adding to viewed products:', error);
       // Don't show error message as this is a background operation
       return false;
     }

@@ -168,19 +168,25 @@ class ViewedProductController {
      */
     async getGuestViewedProducts(req, res) {
         try {
-            const sessionId = req.sessionID || req.headers['x-session-id'];
+            // Tạo sessionId nếu không có (tương tự như trackProductView)
+            let sessionId = req.sessionID || req.headers['x-session-id'] || req.headers['x-request-id'];
+            
+            if (!sessionId) {
+                // Tạo sessionId dựa trên IP + UserAgent + timestamp
+                const crypto = require('crypto');
+                const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+                const userAgent = req.get('User-Agent') || 'unknown';
+                sessionId = crypto.createHash('md5')
+                    .update(ipAddress + userAgent + Date.now().toString())
+                    .digest('hex')
+                    .substring(0, 16);
+            }
+
             const {
                 page = 1,
                 limit = 10,
                 days = 7
             } = req.query;
-
-            if (!sessionId) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Session ID không tồn tại'
-                });
-            }
 
             // Validate pagination
             const pageNum = parseInt(page);
@@ -208,6 +214,14 @@ class ViewedProductController {
                 });
             }
 
+            // Log để debug
+            console.log('🔍 Getting guest viewed products:', {
+                sessionId: sessionId ? sessionId.substring(0, 10) + '...' : 'null',
+                page: pageNum,
+                limit: limitNum,
+                days: daysNum
+            });
+
             const result = await viewedProductService.getGuestViewedProducts(sessionId, {
                 page: pageNum,
                 limit: limitNum,
@@ -217,6 +231,9 @@ class ViewedProductController {
             if (!result.success) {
                 return res.status(500).json(result);
             }
+
+            // Thêm sessionId vào response để client có thể sử dụng
+            result.data.sessionId = sessionId;
 
             res.json(result);
         } catch (error) {
