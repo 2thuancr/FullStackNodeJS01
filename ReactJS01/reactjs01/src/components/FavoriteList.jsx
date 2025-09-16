@@ -47,7 +47,8 @@ const FavoriteList = ({
   } = useFavorite();
   
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortBy, setSortBy] = useState(null);
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('DESC');
   const [searchTerm, setSearchTerm] = useState('');
   const [showClearModal, setShowClearModal] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -61,6 +62,7 @@ const FavoriteList = ({
         page: currentPage,
         limit: pageSize,
         sortBy,
+        sortOrder,
         search: searchTerm
       });
     }
@@ -74,6 +76,7 @@ const FavoriteList = ({
         page,
         limit: pageSize,
         sortBy,
+        sortOrder,
         search: searchTerm
       });
     }
@@ -88,6 +91,22 @@ const FavoriteList = ({
         page: 1,
         limit: pageSize,
         sortBy: value,
+        sortOrder,
+        search: searchTerm
+      });
+    }
+  };
+
+  const handleSortOrderChange = (value) => {
+    setSortOrder(value);
+    setCurrentPage(1);
+    // Only call API if we have data and user is changing sort order
+    if (favorites.length > 0) {
+      loadFavorites({
+        page: 1,
+        limit: pageSize,
+        sortBy,
+        sortOrder: value,
         search: searchTerm
       });
     }
@@ -101,6 +120,7 @@ const FavoriteList = ({
       page: 1,
       limit: pageSize,
       sortBy,
+      sortOrder,
       search: value
     });
   };
@@ -241,12 +261,23 @@ const FavoriteList = ({
                 value={sortBy}
                 onChange={handleSortChange}
                 style={{ width: 150 }}
+                placeholder="Sắp xếp theo"
               >
-                <Option value="createdAt">Mới nhất</Option>
-                <Option value="oldest">Cũ nhất</Option>
-                <Option value="name">Tên A-Z</Option>
-                <Option value="price_asc">Giá thấp-cao</Option>
-                <Option value="price_desc">Giá cao-thấp</Option>
+                <Option value="createdAt">Ngày thêm</Option>
+                <Option value="name">Tên sản phẩm</Option>
+                <Option value="price">Giá</Option>
+                <Option value="rating">Đánh giá</Option>
+                <Option value="views">Lượt xem</Option>
+              </Select>
+              
+              <Select
+                value={sortOrder}
+                onChange={handleSortOrderChange}
+                style={{ width: 120 }}
+                placeholder="Thứ tự"
+              >
+                <Option value="DESC">Giảm dần</Option>
+                <Option value="ASC">Tăng dần</Option>
               </Select>
               
               {favoritesCount > 0 && (
