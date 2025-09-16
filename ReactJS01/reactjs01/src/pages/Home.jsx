@@ -1,5 +1,5 @@
-import React from 'react';
-import { Card, Row, Col, Typography, Space, Divider, Tag } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Row, Col, Typography, Space, Divider, Tag, Button, Spin } from 'antd';
 import { 
   CodeOutlined, 
   DatabaseOutlined, 
@@ -7,12 +7,54 @@ import {
   SafetyOutlined,
   RocketOutlined,
   HeartOutlined,
-  CheckCircleOutlined
+  CheckCircleOutlined,
+  FireOutlined,
+  EyeOutlined
 } from '@ant-design/icons';
+import { getMostViewedProductsApi } from '../util/api';
+import { useFavorite } from '../components/context/FavoriteContext';
+import { useViewedProducts } from '../components/context/ViewedProductsContext';
+import ProductCard from '../components/ProductCard';
 
 const { Title, Paragraph, Text } = Typography;
 
 const Home = () => {
+  const [hotProducts, setHotProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const { favorites, favoritesCount } = useFavorite();
+  const { getRecentViewedProducts } = useViewedProducts();
+
+  useEffect(() => {
+    loadHotProducts();
+  }, []);
+
+  const loadHotProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await getMostViewedProductsApi({ limit: 6 });
+      if (response?.data?.success) {
+        const products = response.data.data.products || response.data.data;
+        setHotProducts(products);
+      }
+    } catch (error) {
+      console.error('Error loading hot products:', error);
+      // Fallback to empty array if API fails
+      setHotProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewProduct = (product) => {
+    // This will be handled by the ProductCard component
+    console.log('View product:', product);
+  };
+
+  const handleAddToCart = (product) => {
+    // This will be handled by the ProductCard component
+    console.log('Add to cart:', product);
+  };
+
   const technologies = [
     {
       name: 'React.js',
@@ -181,6 +223,90 @@ const Home = () => {
           </Col>
         </Row>
 
+        {/* Hot Products Section */}
+        <Card 
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FireOutlined style={{ color: '#ff4d4f' }} />
+              <span>Sản phẩm hot</span>
+            </div>
+          }
+          style={{ marginBottom: '24px', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
+        >
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <Spin size="large" />
+            </div>
+          ) : hotProducts.length > 0 ? (
+            <Row gutter={[16, 16]}>
+              {hotProducts.map(product => (
+                <Col xs={24} sm={12} lg={8} key={product.id}>
+                  <ProductCard
+                    product={product}
+                    onViewDetails={handleViewProduct}
+                    onAddToCart={handleAddToCart}
+                  />
+                </Col>
+              ))}
+            </Row>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+              <FireOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
+              <div>Chưa có sản phẩm hot nào</div>
+              <div style={{ fontSize: '14px', marginTop: '8px' }}>
+                Hãy xem một số sản phẩm để chúng xuất hiện ở đây
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* User Stats Section */}
+        <Row gutter={[24, 24]}>
+          <Col xs={24} lg={12}>
+            <Card 
+              title={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <HeartOutlined style={{ color: '#ff4d4f' }} />
+                  <span>Sản phẩm yêu thích của bạn</span>
+                </div>
+              }
+              style={{ borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
+            >
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <HeartOutlined style={{ fontSize: '48px', color: '#ff4d4f', marginBottom: '16px' }} />
+                <Title level={3} style={{ color: '#ff4d4f', margin: '0 0 8px 0' }}>
+                  {favoritesCount}
+                </Title>
+                <Text type="secondary">
+                  sản phẩm trong danh sách yêu thích
+                </Text>
+              </div>
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={12}>
+            <Card 
+              title={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <EyeOutlined style={{ color: '#1890ff' }} />
+                  <span>Sản phẩm đã xem gần đây</span>
+                </div>
+              }
+              style={{ borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
+            >
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <EyeOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
+                <Title level={3} style={{ color: '#1890ff', margin: '0 0 8px 0' }}>
+                  {getRecentViewedProducts(5).length}
+                </Title>
+                <Text type="secondary">
+                  sản phẩm đã xem trong 5 sản phẩm gần nhất
+                </Text>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+
         {/* Footer */}
         <div style={{ textAlign: 'center', marginTop: '48px', color: 'rgba(255,255,255,0.8)' }}>
           <Paragraph style={{ margin: '0' }}>
@@ -196,6 +322,10 @@ const Home = () => {
 };
 
 export default Home;
+
+
+
+
 
 
 

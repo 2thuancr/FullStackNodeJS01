@@ -90,6 +90,88 @@ const getSearchSuggestionsApi = (params = {}) => {
   return axios.get(URL_API, { params });
 };
 
+// Increment product view count API
+const incrementProductViewApi = (productId) => {
+  const URL_API = `/v1/api/products/${productId}/increment-view`;
+  return axios.post(URL_API);
+};
+
+// Favorite Products API functions
+const addToFavoritesApi = (productId) => {
+  const URL_API = "/v1/api/favorites";
+  const data = { productId };
+  return axios.post(URL_API, data);
+};
+
+const removeFromFavoritesApi = (productId) => {
+  const URL_API = `/v1/api/favorites/${productId}`;
+  return axios.delete(URL_API);
+};
+
+const getFavoritesApi = (params = {}) => {
+  const URL_API = "/v1/api/favorites";
+  return axios.get(URL_API, { params });
+};
+
+const checkFavoriteStatusApi = (productId) => {
+  const URL_API = `/v1/api/favorites/check/${productId}`;
+  return axios.get(URL_API);
+};
+
+const getFavoritesCountApi = () => {
+  const URL_API = "/v1/api/favorites/count";
+  return axios.get(URL_API);
+};
+
+const clearAllFavoritesApi = () => {
+  const URL_API = "/v1/api/favorites/clear";
+  return axios.delete(URL_API);
+};
+
+// Viewed Products API functions
+const addToViewedProductsApi = (productId) => {
+  const URL_API = "/v1/api/viewed-products";
+  const data = { productId };
+  return axios.post(URL_API, data);
+};
+
+const getViewedProductsApi = (params = {}) => {
+  const URL_API = "/v1/api/viewed-products";
+  return axios.get(URL_API, { params });
+};
+
+const getGuestViewedProductsApi = (params = {}) => {
+  const URL_API = "/v1/api/viewed-products/guest";
+  return axios.get(URL_API, { params });
+};
+
+const clearViewedHistoryApi = () => {
+  const URL_API = "/v1/api/viewed-products";
+  return axios.delete(URL_API);
+};
+
+const getViewedStatisticsApi = () => {
+  const URL_API = "/v1/api/viewed-products/statistics";
+  return axios.get(URL_API);
+};
+
+const getMostViewedProductsApi = (params = {}) => {
+  const URL_API = "/v1/api/viewed-products/most-viewed";
+  return axios.get(URL_API, { params });
+};
+
+// Similar Products API functions
+const getSimilarProductsApi = (productId, params = {}) => {
+  const URL_API = `/v1/api/products/${productId}/similar`;
+  return axios.get(URL_API, { params });
+};
+
+// Product Statistics API functions
+const getProductStatsApi = (productId) => {
+  const URL_API = `/v1/api/products/${productId}/stats`;
+  return axios.get(URL_API);
+};
+
 export { 
   createUserApi, 
   loginApi, 
@@ -104,7 +186,26 @@ export {
   getCategoriesApi,
   getCategoryByIdApi,
   fuzzySearchProductsApi,
-  getSearchSuggestionsApi
+  getSearchSuggestionsApi,
+  incrementProductViewApi,
+  // Favorite Products APIs
+  addToFavoritesApi,
+  removeFromFavoritesApi,
+  getFavoritesApi,
+  checkFavoriteStatusApi,
+  getFavoritesCountApi,
+  clearAllFavoritesApi,
+  // Viewed Products APIs
+  addToViewedProductsApi,
+  getViewedProductsApi,
+  getGuestViewedProductsApi,
+  clearViewedHistoryApi,
+  getViewedStatisticsApi,
+  getMostViewedProductsApi,
+  // Similar Products APIs
+  getSimilarProductsApi,
+  // Product Statistics APIs
+  getProductStatsApi
 };
 
 // Default export cho backward compatibility
@@ -122,10 +223,33 @@ const api = {
   getCategoriesApi,
   getCategoryByIdApi,
   fuzzySearchProductsApi,
-  getSearchSuggestionsApi
+  getSearchSuggestionsApi,
+  incrementProductViewApi,
+  // Favorite Products APIs
+  addToFavoritesApi,
+  removeFromFavoritesApi,
+  getFavoritesApi,
+  checkFavoriteStatusApi,
+  getFavoritesCountApi,
+  clearAllFavoritesApi,
+  // Viewed Products APIs
+  addToViewedProductsApi,
+  getViewedProductsApi,
+  getGuestViewedProductsApi,
+  clearViewedHistoryApi,
+  getViewedStatisticsApi,
+  getMostViewedProductsApi,
+  // Similar Products APIs
+  getSimilarProductsApi,
+  // Product Statistics APIs
+  getProductStatsApi
 };
 
 export default api;
+
+
+
+
 
 
 

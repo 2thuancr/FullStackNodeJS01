@@ -1,17 +1,20 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Card, Button, Space, Typography, Tag, Image, Tooltip, Rate } from 'antd';
 import { 
   EyeOutlined, 
   ShoppingCartOutlined, 
   StarOutlined,
   CalendarOutlined,
-  TagOutlined
+  TagOutlined,
+  UserOutlined,
+  MessageOutlined
 } from '@ant-design/icons';
 import HighlightedText from './HighlightedText';
+import FavoriteButton from './FavoriteButton';
 
 const { Title, Text, Paragraph } = Typography;
 
-const ProductCard = ({ 
+const ProductCard = memo(({ 
   product, 
   onViewDetails, 
   onAddToCart 
@@ -30,7 +33,10 @@ const ProductCard = ({
     category,
     createdAt,
     rating = 0,
-    ratingCount = 0
+    ratingCount = 0,
+    viewCount = 0,
+    purchaseCount = 0,
+    commentCount = 0
   } = product;
 
   // Convert string values to numbers if needed
@@ -40,6 +46,8 @@ const ProductCard = ({
   const numericDiscount = typeof discount === 'string' ? parseFloat(discount) : discount;
   const numericStock = typeof stock === 'string' ? parseInt(stock) : stock;
   const numericRatingCount = typeof ratingCount === 'string' ? parseInt(ratingCount) : ratingCount;
+  const numericPurchaseCount = typeof purchaseCount === 'string' ? parseInt(purchaseCount) : purchaseCount;
+  const numericCommentCount = typeof commentCount === 'string' ? parseInt(commentCount) : commentCount;
 
 
   const formatPrice = (price) => {
@@ -167,7 +175,12 @@ const ProductCard = ({
           >
             Mua ngay
           </Button>
-        </Tooltip>
+        </Tooltip>,
+        <FavoriteButton 
+          productId={id} 
+          size="small" 
+          style={{ border: 'none', boxShadow: 'none' }}
+        />
       ]}
     >
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -292,6 +305,15 @@ const ProductCard = ({
             <div style={{ fontSize: '9px', color: '#999', marginTop: 2 }}>
               {numericRating.toFixed(1)} ({numericRatingCount} đánh giá)
             </div>
+            <div style={{ fontSize: '9px', color: '#1890ff', marginTop: 2 }}>
+              👁️ {viewCount} lượt xem
+            </div>
+            <div style={{ fontSize: '9px', color: '#52c41a', marginTop: 2 }}>
+              <UserOutlined /> {numericPurchaseCount} khách mua
+            </div>
+            <div style={{ fontSize: '9px', color: '#722ed1', marginTop: 2 }}>
+              <MessageOutlined /> {numericCommentCount} bình luận
+            </div>
           </div>
           
           <div style={{ textAlign: 'right' }}>
@@ -306,6 +328,6 @@ const ProductCard = ({
       </div>
     </Card>
   );
-};
+});
 
 export default ProductCard;

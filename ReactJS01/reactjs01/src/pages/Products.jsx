@@ -1,12 +1,22 @@
 import React, { useState } from 'react';
-import { Card, Switch, Space, Typography, message, Modal } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { Card, Switch, Space, Typography, message, Tabs } from 'antd';
+import { InfoCircleOutlined, HeartOutlined, EyeOutlined } from '@ant-design/icons';
 import ProductList from '../components/ProductList';
+import FavoriteList from '../components/FavoriteList';
+import ViewedProducts from '../components/ViewedProducts';
+import SimilarProducts from '../components/SimilarProducts';
+import TestViewedProducts from '../components/TestViewedProducts';
+import { incrementProductViewApi, addToViewedProductsApi } from '../util/api';
+import { useViewedProducts } from '../components/context/ViewedProductsContext';
 
 const { Title, Text } = Typography;
 
 const Products = () => {
+  const navigate = useNavigate();
   const [useLazyLoading, setUseLazyLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('products');
+  const { addToViewedProducts } = useViewedProducts();
 
   const handleLazyLoadingChange = (checked) => {
     console.log('Lazy loading switch changed to:', checked); // Debug log
@@ -19,34 +29,89 @@ const Products = () => {
       message.info('Đã chuyển sang chế độ Phân trang - Chia thành các trang, có thể chọn số sản phẩm/trang');
     }
   };
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [cart, setCart] = useState([]);
+  const [productViewCounts, setProductViewCounts] = useState({});
 
-  const handleViewProduct = (product) => {
-    setSelectedProduct(product);
+  const handleViewProduct = async (product) => {
+    try {
+      // Gọi API để tăng view count
+      const response = await incrementProductViewApi(product.id);
+      console.log('View count incremented for product:', product.name);
+      
+      // Cập nhật view count trong state nếu API trả về view count mới
+      if (response?.data?.data?.viewCount !== undefined) {
+        setProductViewCounts(prev => ({
+          ...prev,
+          [product.id]: response.data.data.viewCount
+        }));
+      }
+
+      // Thêm vào danh sách sản phẩm đã xem
+      await addToViewedProducts(product.id);
+    } catch (error) {
+      console.error('Error incrementing view count:', error);
+      // Không hiển thị lỗi cho user vì đây là tính năng phụ
+    }
+    
+    // Điều hướng đến trang chi tiết sản phẩm
+    navigate(`/products/${product.id}`);
   };
 
   const handleAddToCart = (product) => {
-    setCart(prev => {
-      const existingItem = prev.find(item => item.id === product.id);
-      if (existingItem) {
-        return prev.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prev, { ...product, quantity: 1 }];
-    });
     message.success(`Đã thêm ${product.name} vào giỏ hàng`);
   };
 
-  const handleCloseModal = () => {
-    setSelectedProduct(null);
+
+  const tabItems = [
+    {
+      key: 'products',
+      label: 'Tất cả sản phẩm',
+      icon: <InfoCircleOutlined />
+    },
+    {
+      key: 'favorites',
+      label: 'Sản phẩm yêu thích',
+      icon: <HeartOutlined />
+    },
+    {
+      key: 'viewed',
+      label: 'Sản phẩm đã xem',
+      icon: <EyeOutlined />
+    }
+  ];
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'favorites':
+        return (
+          <FavoriteList
+            onViewProduct={handleViewProduct}
+            onAddToCart={handleAddToCart}
+          />
+        );
+      case 'viewed':
+        return (
+          <ViewedProducts
+            onViewProduct={handleViewProduct}
+            onAddToCart={handleAddToCart}
+          />
+        );
+      case 'products':
+        return (
+          <ProductList
+            useLazyLoading={useLazyLoading}
+            onViewProduct={handleViewProduct}
+            onAddToCart={handleAddToCart}
+            productViewCounts={productViewCounts}
+          />
+        );
+      default:
+        return null;
+    }
   };
 
   return (
     <div>
+
       {/* Header Controls */}
       <Card style={{ marginBottom: 24 }}>
         <Space align="center" justify="space-between" style={{ width: '100%' }}>
@@ -55,117 +120,47 @@ const Products = () => {
               Quản lý sản phẩm
             </Title>
             <Text type="secondary">
-              Chuyển đổi giữa phân trang và lazy loading
+              {activeTab === 'products' 
+                ? 'Chuyển đổi giữa phân trang và lazy loading'
+                : activeTab === 'favorites'
+                ? 'Danh sách sản phẩm yêu thích của bạn'
+                : 'Lịch sử sản phẩm đã xem'
+              }
             </Text>
           </div>
           
-          <Space>
-            <Text style={{ color: !useLazyLoading ? '#1890ff' : '#999' }}>Phân trang</Text>
-            <Switch
-              checked={useLazyLoading}
-              onChange={handleLazyLoadingChange}
-              checkedChildren="Lazy"
-              unCheckedChildren="Page"
-            />
-            <Text style={{ color: useLazyLoading ? '#1890ff' : '#999' }}>Lazy Loading</Text>
-          </Space>
+          {activeTab === 'products' && (
+            <Space>
+              <Text style={{ color: !useLazyLoading ? '#1890ff' : '#999' }}>Phân trang</Text>
+              <Switch
+                checked={useLazyLoading}
+                onChange={handleLazyLoadingChange}
+                checkedChildren="Lazy"
+                unCheckedChildren="Page"
+              />
+              <Text style={{ color: useLazyLoading ? '#1890ff' : '#999' }}>Lazy Loading</Text>
+            </Space>
+          )}
         </Space>
       </Card>
 
-      {/* Product List */}
-      <ProductList
-        useLazyLoading={useLazyLoading}
-        onViewProduct={handleViewProduct}
-        onAddToCart={handleAddToCart}
-      />
+      {/* Tabs */}
+      <Card style={{ marginBottom: 24 }}>
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={tabItems}
+          size="large"
+        />
+      </Card>
 
-      {/* Product Detail Modal */}
-      <Modal
-        title="Chi tiết sản phẩm"
-        open={!!selectedProduct}
-        onCancel={handleCloseModal}
-        footer={null}
-        width={600}
-      >
-        {selectedProduct && (
-          <div>
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              {selectedProduct.imageUrl ? (
-                <img
-                  src={selectedProduct.imageUrl}
-                  alt={selectedProduct.name}
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: 300,
-                    objectFit: 'cover',
-                    borderRadius: 8
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    height: 200,
-                    backgroundColor: '#f5f5f5',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 8,
-                    color: '#999'
-                  }}
-                >
-                  Không có ảnh
-                </div>
-              )}
-            </div>
-            
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <div>
-                <Title level={3} style={{ margin: 0 }}>
-                  {selectedProduct.name}
-                </Title>
-                <Text type="secondary">
-                  {selectedProduct.category?.name}
-                </Text>
-              </div>
-              
-              <div>
-                <Text strong style={{ fontSize: '18px', color: '#ff4d4f' }}>
-                  {new Intl.NumberFormat('vi-VN', {
-                    style: 'currency',
-                    currency: 'VND'
-                  }).format(selectedProduct.price)}
-                </Text>
-              </div>
-              
-              <div>
-                <Text strong>Mô tả:</Text>
-                <div style={{ marginTop: 8 }}>
-                  <Text>{selectedProduct.description}</Text>
-                </div>
-              </div>
-              
-              <div>
-                <Text strong>Tồn kho: </Text>
-                <Text style={{ 
-                  color: selectedProduct.stock > 10 ? 'green' : 
-                         selectedProduct.stock > 0 ? 'orange' : 'red' 
-                }}>
-                  {selectedProduct.stock > 10 ? 'Còn hàng' : 
-                   selectedProduct.stock > 0 ? `Còn ${selectedProduct.stock} sản phẩm` : 
-                   'Hết hàng'}
-                </Text>
-              </div>
-              
-              <div>
-                <Text strong>Ngày tạo: </Text>
-                <Text>
-                  {new Date(selectedProduct.createdAt).toLocaleDateString('vi-VN')}
-                </Text>
-              </div>
-            </Space>
-          </div>
-        )}
-      </Modal>
+      {/* Tab Content */}
+      {renderTabContent()}
+
+      {/* Test Component - Only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <TestViewedProducts />
+      )}
     </div>
   );
 };

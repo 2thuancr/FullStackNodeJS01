@@ -37,7 +37,8 @@ const { Option } = Select;
 const ProductList = ({ 
   useLazyLoading = false, 
   onViewProduct, 
-  onAddToCart 
+  onAddToCart,
+  productViewCounts = {}
 }) => {
   // State management
   const [products, setProducts] = useState([]);
@@ -85,7 +86,7 @@ const ProductList = ({
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   
   // Fetch suggestions from API with caching
-  const fetchSuggestions = useCallback(async (query) => {
+  const fetchSuggestions = async (query) => {
     if (!query || query.length < 2) {
       setApiSuggestions([]);
       setLoadingSuggestions(false);
@@ -121,18 +122,18 @@ const ProductList = ({
     } finally {
       setLoadingSuggestions(false);
     }
-  }, [suggestionsCache]);
+  };
 
   // Debounced suggestion fetch
-  const debouncedFetchSuggestions = useCallback(
-    debounce(fetchSuggestions, 200), // Giảm từ 300ms xuống 200ms
-    [fetchSuggestions]
+  const debouncedFetchSuggestions = useMemo(
+    () => debounce(fetchSuggestions, 200), // Giảm từ 300ms xuống 200ms
+    []
   );
 
   // Update suggestions when search input changes
   useEffect(() => {
     debouncedFetchSuggestions(searchInput);
-  }, [searchInput, debouncedFetchSuggestions]);
+  }, [searchInput]);
 
   // Auto-load products when search input changes (with debounce)
   useEffect(() => {
@@ -189,7 +190,7 @@ const ProductList = ({
   }, [searchInput, apiSuggestions, products, categories]);
 
   // Load categories
-  const loadCategories = useCallback(async () => {
+  const loadCategories = async () => {
     try {
       const response = await getCategoriesApi();
       if (response.data.success) {
@@ -198,10 +199,10 @@ const ProductList = ({
     } catch (error) {
       console.error('Error loading categories:', error);
     }
-  }, []);
+  };
 
-  // Load products
-  const loadProducts = useCallback(async (pageNum = 1, append = false) => {
+  // Load products - Remove useCallback to prevent dependency issues
+  const loadProducts = async (pageNum = 1, append = false) => {
     const loadingState = append ? setLoadingMore : setLoading;
     loadingState(true);
     
@@ -266,11 +267,21 @@ const ProductList = ({
       }
     } catch (error) {
       console.error('Error loading products:', error);
-      message.error('Lỗi khi tải sản phẩm');
+      
+      // Hiển thị thông báo lỗi chi tiết hơn
+      if (error.response?.status === 500) {
+        message.error('Lỗi server: Backend đang gặp sự cố. Vui lòng kiểm tra lại sau.');
+      } else if (error.response?.status === 404) {
+        message.error('Không tìm thấy API endpoint. Vui lòng kiểm tra cấu hình backend.');
+      } else if (error.code === 'ERR_NETWORK') {
+        message.error('Không thể kết nối đến backend. Vui lòng kiểm tra kết nối mạng và đảm bảo backend đang chạy.');
+      } else {
+        message.error(`Lỗi khi tải sản phẩm: ${error.message || 'Lỗi không xác định'}`);
+      }
     } finally {
       loadingState(false);
     }
-  }, [selectedCategoryId, searchTerm, sortBy, sortOrder, pageSize, useLazyLoading, priceRange, promotionFilter, viewsFilter, ratingFilter, statusFilter]);
+  };
 
   // Lazy loading observer
   const lastProductElementRef = useCallback(node => {
@@ -317,12 +328,12 @@ const ProductList = ({
       console.log('Observing node:', node);
       observerRef.current.observe(node);
     }
-  }, [loadingMore, hasMore, products.length, loadProducts, useLazyLoading, totalProducts]);
+  }, [loadingMore, hasMore, products.length, useLazyLoading, totalProducts]);
 
   // Effects
   useEffect(() => {
     loadCategories();
-  }, [loadCategories]);
+  }, []);
 
   // Debug effect for lazy loading
   useEffect(() => {
@@ -338,7 +349,7 @@ const ProductList = ({
 
   useEffect(() => {
     loadProducts(1, false);
-  }, [selectedCategoryId, searchTerm, sortBy, sortOrder, pageSize, priceRange, promotionFilter, viewsFilter, ratingFilter, statusFilter, loadProducts]);
+  }, [selectedCategoryId, searchTerm, sortBy, sortOrder, pageSize, priceRange, promotionFilter, viewsFilter, ratingFilter, statusFilter]);
 
   // Reset when switching between pagination and lazy loading
   useEffect(() => {
@@ -350,7 +361,7 @@ const ProductList = ({
       // Load first page immediately
       loadProducts(1, false);
     }
-  }, [useLazyLoading, loadProducts]);
+  }, [useLazyLoading]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -796,7 +807,10 @@ const ProductList = ({
                   ref={useLazyLoading && index === products.length - 1 ? lastProductElementRef : null}
                 >
                   <ProductCard
-                    product={product}
+                    product={{
+                      ...product,
+                      viewCount: productViewCounts[product.id] || product.viewCount || 0
+                    }}
                     onViewDetails={handleViewProduct}
                     onAddToCart={handleAddToCart}
                   />

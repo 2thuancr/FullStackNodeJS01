@@ -105,3 +105,5 @@ const PriceRangeFilter = ({
 
 export default PriceRangeFilter;
 
+
+
