@@ -8,7 +8,8 @@ class ElasticsearchService {
             auth: {
                 username: process.env.ELASTICSEARCH_USERNAME || 'elastic',
                 password: process.env.ELASTICSEARCH_PASSWORD || 'changeme'
-            }
+            },
+            apiVersion: '8'
         });
         this.indexName = 'products';
     }
@@ -43,47 +44,45 @@ class ElasticsearchService {
 
             const response = await this.client.indices.create({
                 index: this.indexName,
-                body: {
-                    mappings: {
-                        properties: {
-                            id: { type: 'integer' },
-                            name: { 
-                                type: 'text',
-                                analyzer: 'standard',
-                                fields: {
-                                    keyword: { type: 'keyword' },
-                                    suggest: { type: 'completion' }
-                                }
-                            },
-                            description: { 
-                                type: 'text',
-                                analyzer: 'standard'
-                            },
-                            price: { type: 'float' },
-                            originalPrice: { type: 'float' },
-                            discount: { type: 'float' },
-                            views: { type: 'integer' },
-                            rating: { type: 'float' },
-                            ratingCount: { type: 'integer' },
-                            status: { type: 'keyword' },
-                            stock: { type: 'integer' },
-                            imageUrl: { type: 'keyword' },
-                            categoryId: { type: 'integer' },
-                            categoryName: { type: 'text' },
-                            categoryDescription: { type: 'text' },
-                            isActive: { type: 'boolean' },
-                            createdAt: { type: 'date' },
-                            updatedAt: { type: 'date' }
-                        }
-                    },
-                    settings: {
-                        analysis: {
-                            analyzer: {
-                                vietnamese_analyzer: {
-                                    type: 'custom',
-                                    tokenizer: 'standard',
-                                    filter: ['lowercase', 'asciifolding']
-                                }
+                mappings: {
+                    properties: {
+                        id: { type: 'integer' },
+                        name: { 
+                            type: 'text',
+                            analyzer: 'standard',
+                            fields: {
+                                keyword: { type: 'keyword' },
+                                suggest: { type: 'completion' }
+                            }
+                        },
+                        description: { 
+                            type: 'text',
+                            analyzer: 'standard'
+                        },
+                        price: { type: 'float' },
+                        originalPrice: { type: 'float' },
+                        discount: { type: 'float' },
+                        views: { type: 'integer' },
+                        rating: { type: 'float' },
+                        ratingCount: { type: 'integer' },
+                        status: { type: 'keyword' },
+                        stock: { type: 'integer' },
+                        imageUrl: { type: 'keyword' },
+                        categoryId: { type: 'integer' },
+                        categoryName: { type: 'text' },
+                        categoryDescription: { type: 'text' },
+                        isActive: { type: 'boolean' },
+                        createdAt: { type: 'date' },
+                        updatedAt: { type: 'date' }
+                    }
+                },
+                settings: {
+                    analysis: {
+                        analyzer: {
+                            vietnamese_analyzer: {
+                                type: 'custom',
+                                tokenizer: 'standard',
+                                filter: ['lowercase', 'asciifolding']
                             }
                         }
                     }
@@ -147,7 +146,7 @@ class ElasticsearchService {
             }
 
             if (body.length > 0) {
-                const response = await this.client.bulk({ body });
+                const response = await this.client.bulk({ operations: body });
                 console.log(`✅ Synced ${products.length} products to Elasticsearch`);
                 return { success: true, count: products.length };
             }
@@ -268,28 +267,26 @@ class ElasticsearchService {
 
             const response = await this.client.search({
                 index: this.indexName,
-                body: {
-                    query: searchQuery,
-                    sort: sort,
-                    from: from,
-                    size: limit,
-                    highlight: {
-                        fields: {
-                            name: {},
-                            description: {},
-                            categoryName: {}
-                        }
+                query: searchQuery,
+                sort: sort,
+                from: from,
+                size: limit,
+                highlight: {
+                    fields: {
+                        name: {},
+                        description: {},
+                        categoryName: {}
                     }
                 }
             });
 
-            const products = response.body.hits.hits.map(hit => ({
+            const products = response.hits.hits.map(hit => ({
                 ...hit._source,
                 _score: hit._score,
                 _highlight: hit.highlight
             }));
 
-            const total = response.body.hits.total.value;
+            const total = response.hits.total.value;
 
             return {
                 success: true,
@@ -328,20 +325,18 @@ class ElasticsearchService {
             }
             const response = await this.client.search({
                 index: this.indexName,
-                body: {
-                    suggest: {
-                        product_suggest: {
-                            prefix: query,
-                            completion: {
-                                field: 'name.suggest',
-                                size: limit
-                            }
+                suggest: {
+                    product_suggest: {
+                        prefix: query,
+                        completion: {
+                            field: 'name.suggest',
+                            size: limit
                         }
                     }
                 }
             });
 
-            const suggestions = response.body.suggest.product_suggest[0].options.map(option => ({
+            const suggestions = response.suggest.product_suggest[0].options.map(option => ({
                 text: option.text,
                 score: option._score
             }));
@@ -368,7 +363,7 @@ class ElasticsearchService {
             await this.client.index({
                 index: this.indexName,
                 id: productId,
-                body: productData
+                document: productData
             });
             return { success: true };
         } catch (error) {

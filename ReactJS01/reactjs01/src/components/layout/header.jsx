@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { UsergroupAddOutlined, HomeOutlined, SettingOutlined } from '@ant-design/icons';
+import { UsergroupAddOutlined, HomeOutlined, SettingOutlined, DatabaseOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { Menu } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth.context';
@@ -16,6 +16,16 @@ const Header = () => {
             label: <Link to={"/"}>Home Page</Link>,
         },
         ...(auth.isAuthenticated ? [
+            {
+                key: 'products',
+                icon: <ShoppingOutlined />,
+                label: <Link to={"/products"}>Sản phẩm</Link>,
+            },
+            {
+                key: 'elasticsearch',
+                icon: <DatabaseOutlined />,
+                label: <Link to={"/elasticsearch-demo"}>Elasticsearch Demo</Link>,
+            },
             {
                 key: 'user',
                 icon: <UsergroupAddOutlined />,

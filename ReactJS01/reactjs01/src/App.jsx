@@ -11,6 +11,7 @@ import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import TestPage from './pages/TestPage';
+import ElasticsearchDemo from './pages/ElasticsearchDemo';
 import ForgotPassword from './pages/ForgotPassword';
 import VerifyOTP from './pages/VerifyOTP';
 import PrivateRoute from './components/PrivateRoute';
@@ -55,6 +56,13 @@ function App() {
                   <PrivateRoute>
                     <Layout>
                       <TestPage />
+                    </Layout>
+                  </PrivateRoute>
+                } />
+                <Route path="/elasticsearch-demo" element={
+                  <PrivateRoute>
+                    <Layout>
+                      <ElasticsearchDemo />
                     </Layout>
                   </PrivateRoute>
                 } />

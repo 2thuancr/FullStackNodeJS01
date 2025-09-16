@@ -1,63 +1,75 @@
 import React from 'react';
+import { Typography } from 'antd';
 
-const HighlightedText = ({ text, highlights = [] }) => {
+const { Text } = Typography;
+
+const HighlightedText = ({ 
+  text, 
+  highlights = [], 
+  searchTerm = '', 
+  maxLength = 200,
+  className = '',
+  style = {}
+}) => {
+  // If no highlights provided, do simple highlighting
   if (!highlights || highlights.length === 0) {
-    return <span>{text}</span>;
+    if (!searchTerm) return <Text className={className} style={style}>{text}</Text>;
+    
+    // Simple case-insensitive highlighting
+    const regex = new RegExp(`(${searchTerm})`, 'gi');
+    const parts = text.split(regex);
+    
+    return (
+      <Text className={className} style={style}>
+        {parts.map((part, index) => 
+          regex.test(part) ? (
+            <Text key={index} mark style={{ backgroundColor: '#fff2e8', color: '#d4380d' }}>
+              {part}
+            </Text>
+          ) : (
+            part
+          )
+        )}
+      </Text>
+    );
   }
 
-  // Combine all highlight arrays into one
-  const allHighlights = highlights.flat();
-  
-  if (allHighlights.length === 0) {
-    return <span>{text}</span>;
-  }
+  // Process Elasticsearch highlights
+  const processHighlights = (originalText, highlightArray) => {
+    if (!highlightArray || highlightArray.length === 0) {
+      return originalText;
+    }
 
-  // Find the first highlight that matches the text
-  const matchingHighlight = allHighlights.find(highlight => 
-    text.includes(highlight.replace(/<[^>]*>/g, '')) // Remove HTML tags for comparison
-  );
-
-  if (!matchingHighlight) {
-    return <span>{text}</span>;
-  }
-
-  // Parse the highlight HTML and create React elements
-  const parseHighlight = (highlight) => {
-    const parts = highlight.split(/(<[^>]*>)/);
+    // Get the first highlight (usually the most relevant)
+    const highlight = highlightArray[0];
+    
+    // Split by <em> tags and process
+    const parts = highlight.split(/(<em>.*?<\/em>)/g);
+    
     return parts.map((part, index) => {
-      if (part.startsWith('<') && part.endsWith('>')) {
-        // This is an HTML tag, skip it
-        return null;
-      } else if (part.trim()) {
-        // This is text content
+      if (part.startsWith('<em>') && part.endsWith('</em>')) {
+        // Remove <em> tags and highlight the content
+        const content = part.replace(/<\/?em>/g, '');
         return (
-          <span 
-            key={index}
-            style={{
-              backgroundColor: '#fff3cd',
-              padding: '1px 2px',
-              borderRadius: '2px',
-              fontWeight: 'bold'
-            }}
-          >
-            {part}
-          </span>
+          <Text key={index} mark style={{ backgroundColor: '#fff2e8', color: '#d4380d', fontWeight: 'bold' }}>
+            {content}
+          </Text>
         );
       }
-      return null;
-    }).filter(Boolean);
+      return part;
+    });
   };
 
+  // Truncate text if too long
+  const truncatedText = text && text.length > maxLength 
+    ? text.substring(0, maxLength) + '...' 
+    : text;
+
   return (
-    <span>
-      {parseHighlight(matchingHighlight)}
-    </span>
+    <Text className={className} style={style}>
+      {processHighlights(truncatedText, highlights)}
+    </Text>
   );
 };
 
 export default HighlightedText;
-
-
-
-
-

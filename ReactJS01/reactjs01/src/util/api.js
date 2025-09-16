@@ -82,12 +82,24 @@ const getCategoryByIdApi = (id) => {
 // Fuzzy Search API functions
 const fuzzySearchProductsApi = (params = {}) => {
   const URL_API = "/v1/api/products/fuzzy-search";
-  return axios.get(URL_API, { params });
+  return axios.get(URL_API, { 
+    params,
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
+  });
 };
 
 const getSearchSuggestionsApi = (params = {}) => {
   const URL_API = "/v1/api/products/search-suggestions";
-  return axios.get(URL_API, { params });
+  return axios.get(URL_API, { 
+    params,
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
+  });
 };
 
 // Increment product view count API

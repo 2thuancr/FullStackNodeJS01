@@ -1,6 +1,6 @@
 import React from 'react';
-import { Typography, Tag, Space, Divider } from 'antd';
-import { SearchOutlined, FilterOutlined } from '@ant-design/icons';
+import { Typography, Tag, Space, Divider, Tooltip } from 'antd';
+import { SearchOutlined, FilterOutlined, HighlightOutlined } from '@ant-design/icons';
 
 const { Text, Title } = Typography;
 
@@ -9,7 +9,9 @@ const SearchResults = ({
   totalResults, 
   activeFilters = {},
   onClearSearch,
-  onClearFilters 
+  onClearFilters,
+  searchType = 'regular', // 'regular' or 'fuzzy'
+  highlightInfo = null // Information about highlighted results
 }) => {
   if (!searchTerm && Object.keys(activeFilters).length === 0) {
     return null;
@@ -31,11 +33,24 @@ const SearchResults = ({
         {hasSearchTerm && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Space>
-              <SearchOutlined style={{ color: '#1890ff' }} />
+              {searchType === 'fuzzy' ? (
+                <HighlightOutlined style={{ color: '#52c41a' }} />
+              ) : (
+                <SearchOutlined style={{ color: '#1890ff' }} />
+              )}
               <Text strong>
-                Kết quả tìm kiếm cho: "<Text code>{searchTerm}</Text>"
+                {searchType === 'fuzzy' ? 'Tìm kiếm thông minh' : 'Kết quả tìm kiếm'} cho: "<Text code>{searchTerm}</Text>"
               </Text>
-              <Tag color="blue">{totalResults} sản phẩm</Tag>
+              <Tag color={searchType === 'fuzzy' ? 'green' : 'blue'}>
+                {totalResults} sản phẩm
+              </Tag>
+              {searchType === 'fuzzy' && (
+                <Tooltip title="Sử dụng Elasticsearch để tìm kiếm thông minh với gợi ý và highlight">
+                  <Tag color="green" icon={<HighlightOutlined />}>
+                    Elasticsearch
+                  </Tag>
+                </Tooltip>
+              )}
             </Space>
             <Text 
               type="secondary" 

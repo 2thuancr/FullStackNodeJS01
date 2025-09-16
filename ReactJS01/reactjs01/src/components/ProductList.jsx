@@ -29,6 +29,7 @@ import ViewsFilter from './ViewsFilter';
 import RatingFilter from './RatingFilter';
 import StatusFilter from './StatusFilter';
 import SearchResults from './SearchResults';
+import SearchSuggestions from './SearchSuggestions';
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -57,6 +58,7 @@ const ProductList = ({
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('DESC');
   const [pageSize, setPageSize] = useState(12);
+  const [isFuzzySearch, setIsFuzzySearch] = useState(false); // Track if using fuzzy search
   
   // New filter states
   const [priceRange, setPriceRange] = useState([0, 10000000]);
@@ -140,6 +142,7 @@ const ProductList = ({
     if (searchInput && searchInput.trim().length > 0) {
       const timeoutId = setTimeout(() => {
         setSearchTerm(searchInput);
+        setIsFuzzySearch(true); // Enable fuzzy search for real-time search
         setPage(1);
       }, 300); // Giảm từ 500ms xuống 300ms
       
@@ -147,6 +150,7 @@ const ProductList = ({
     } else if (searchInput === '') {
       // Clear search immediately when input is empty
       setSearchTerm('');
+      setIsFuzzySearch(false);
       setPage(1);
     }
   }, [searchInput]);
@@ -228,13 +232,15 @@ const ProductList = ({
         ...(statusFilter && { status: statusFilter })
       };
 
-      // Use fuzzy search if searchTerm exists, otherwise use regular search
-      const useFuzzySearch = searchTerm && searchTerm.trim().length > 0;
+      // Use fuzzy search if searchTerm exists and isFuzzySearch is true
+      const useFuzzySearch = searchTerm && searchTerm.trim().length > 0 && isFuzzySearch;
       
       // Debug log để kiểm tra parameters
       console.log('Price Range State:', priceRange);
       console.log('API Parameters:', params);
       console.log('Using fuzzy search:', useFuzzySearch);
+      console.log('Search term:', searchTerm);
+      console.log('Is fuzzy search enabled:', isFuzzySearch);
       
       const response = useFuzzySearch 
         ? await fuzzySearchProductsApi(params)
@@ -380,6 +386,7 @@ const ProductList = ({
 
   const handleSearch = (value) => {
     setSearchTerm(value);
+    setIsFuzzySearch(true); // Enable fuzzy search for manual search
     setPage(1);
   };
 
@@ -393,6 +400,7 @@ const ProductList = ({
   const handleSuggestionSelect = (value) => {
     setSearchInput(value);
     setSearchTerm(value);
+    setIsFuzzySearch(true); // Enable fuzzy search for suggestion selection
     setShowSuggestions(false);
     setPage(1);
   };
@@ -451,6 +459,7 @@ const ProductList = ({
   const handleClearSearch = () => {
     setSearchInput('');
     setSearchTerm('');
+    setIsFuzzySearch(false);
     setPage(1);
   };
 
@@ -673,6 +682,8 @@ const ProductList = ({
             activeFilters={activeFilters}
             onClearSearch={handleClearSearch}
             onClearFilters={handleClearFilters}
+            searchType={isFuzzySearch ? 'fuzzy' : 'regular'}
+            highlightInfo={isFuzzySearch ? { hasHighlights: true } : null}
           />
 
           {/* Search and Sort Controls */}
@@ -686,49 +697,13 @@ const ProductList = ({
             <Row gutter={[16, 16]} align="middle">
               {/* Search */}
               <Col xs={24} md={12}>
-                <AutoComplete
-                  value={searchInput}
-                  options={generateSearchSuggestions}
-                  onSearch={handleSearchInputChange}
-                  onSelect={handleSuggestionSelect}
-                  placeholder="Tìm kiếm sản phẩm..."
-                  allowClear
+                <SearchSuggestions
+                  onSearch={handleSearch}
+                  onSuggestionSelect={handleSuggestionSelect}
+                  placeholder="Tìm kiếm sản phẩm với Elasticsearch..."
                   size="large"
                   style={{ width: '100%' }}
-                  dropdownStyle={{
-                    maxHeight: 300,
-                    overflow: 'auto'
-                  }}
-                  filterOption={(inputValue, option) =>
-                    option.label.toLowerCase().includes(inputValue.toLowerCase())
-                  }
-                  onBlur={() => {
-                    setTimeout(() => setShowSuggestions(false), 200);
-                  }}
-                  onFocus={() => {
-                    if (searchInput.length >= 2) {
-                      setShowSuggestions(true);
-                    }
-                  }}
-                  notFoundContent={
-                    loadingSuggestions ? (
-                      <div style={{ textAlign: 'center', padding: '10px' }}>
-                        <Spin size="small" /> Đang tải gợi ý...
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: 'center', padding: '10px', color: '#999' }}>
-                        Không tìm thấy gợi ý
-                      </div>
-                    )
-                  }
-                >
-                  <Input.Search
-                    onSearch={handleSearch}
-                    enterButton
-                    size="large"
-                    style={{ width: '100%' }}
-                  />
-                </AutoComplete>
+                />
               </Col>
               
               {/* Sort Controls */}

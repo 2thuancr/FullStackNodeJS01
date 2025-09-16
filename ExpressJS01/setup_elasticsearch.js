@@ -1,3 +1,4 @@
+require('dotenv').config();
 const elasticsearchService = require('./src/services/elasticsearchService');
 
 async function setupElasticsearch() {

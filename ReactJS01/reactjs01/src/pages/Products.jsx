@@ -130,7 +130,7 @@ const Products = () => {
             </Title>
             <Text type="secondary">
               {activeTab === 'products' 
-                ? 'Chuyển đổi giữa phân trang và lazy loading'
+                ? 'Tìm kiếm thông minh với Elasticsearch - Chuyển đổi giữa phân trang và lazy loading'
                 : activeTab === 'favorites'
                 ? 'Danh sách sản phẩm yêu thích của bạn'
                 : 'Lịch sử sản phẩm đã xem'
