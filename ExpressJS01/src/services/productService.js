@@ -1,4 +1,5 @@
 const { Product, Category } = require('../models');
+const { Op } = require('sequelize');
 
 class ProductService {
     /**
@@ -51,7 +52,7 @@ class ProductService {
 
         if (search) {
             where.name = {
-                [require('sequelize').Op.like]: `%${search}%`
+                [Op.like]: `%${search}%`
             };
         }
 
@@ -59,10 +60,10 @@ class ProductService {
         if (minPrice !== undefined || maxPrice !== undefined) {
             where.price = {};
             if (minPrice !== undefined) {
-                where.price[require('sequelize').Op.gte] = minPrice;
+                where.price[Op.gte] = minPrice;
             }
             if (maxPrice !== undefined) {
-                where.price[require('sequelize').Op.lte] = maxPrice;
+                where.price[Op.lte] = maxPrice;
             }
         }
 
@@ -70,17 +71,17 @@ class ProductService {
         if (minDiscount !== undefined || maxDiscount !== undefined) {
             where.discount = {};
             if (minDiscount !== undefined) {
-                where.discount[require('sequelize').Op.gte] = minDiscount;
+                where.discount[Op.gte] = minDiscount;
             }
             if (maxDiscount !== undefined) {
-                where.discount[require('sequelize').Op.lte] = maxDiscount;
+                where.discount[Op.lte] = maxDiscount;
             }
         }
 
         // Lọc theo đánh giá
         if (minRating !== undefined) {
             where.rating = {
-                [require('sequelize').Op.gte]: minRating
+                [Op.gte]: minRating
             };
         }
 
@@ -92,7 +93,7 @@ class ProductService {
         // Lọc sản phẩm phổ biến (views cao)
         if (popular) {
             where.views = {
-                [require('sequelize').Op.gte]: 5000 // Ngưỡng views để coi là phổ biến
+                [Op.gte]: 5000 // Ngưỡng views để coi là phổ biến
             };
         }
 
@@ -100,10 +101,10 @@ class ProductService {
         if (minViews !== undefined || maxViews !== undefined) {
             where.views = {};
             if (minViews !== undefined) {
-                where.views[require('sequelize').Op.gte] = minViews;
+                where.views[Op.gte] = minViews;
             }
             if (maxViews !== undefined) {
-                where.views[require('sequelize').Op.lte] = maxViews;
+                where.views[Op.lte] = maxViews;
             }
         }
 
@@ -240,8 +241,8 @@ class ProductService {
                     where: {
                         isActive: true,
                         discount: {
-                            [require('sequelize').Op.gte]: range.minDiscount,
-                            [require('sequelize').Op.lte]: range.maxDiscount
+                            [Op.gte]: range.minDiscount,
+                            [Op.lte]: range.maxDiscount
                         }
                     }
                 });
@@ -318,12 +319,12 @@ class ProductService {
                 };
 
                 if (range.minViews !== null) {
-                    whereCondition.views = { [require('sequelize').Op.gte]: range.minViews };
+                    whereCondition.views = { [Op.gte]: range.minViews };
                 }
                 if (range.maxViews !== null) {
                     whereCondition.views = {
                         ...whereCondition.views,
-                        [require('sequelize').Op.lte]: range.maxViews
+                        [Op.lte]: range.maxViews
                     };
                 }
 
@@ -395,6 +396,240 @@ class ProductService {
             return {
                 success: false,
                 message: 'Lỗi khi tăng view count',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Lấy danh sách sản phẩm tương tự
+     * @param {number} productId - ID sản phẩm gốc
+     * @param {Object} options - Tùy chọn
+     * @param {number} options.limit - Số lượng sản phẩm tương tự (mặc định: 4)
+     * @returns {Promise<Object>} - Danh sách sản phẩm tương tự
+     */
+    async getSimilarProducts(productId, options = {}) {
+        const { limit = 4 } = options;
+
+        try {
+            // Tìm sản phẩm gốc để lấy thông tin category
+            const originalProduct = await Product.findOne({
+                where: {
+                    id: productId,
+                    isActive: true
+                },
+                include: [{
+                    model: Category,
+                    as: 'category',
+                    attributes: ['id', 'name']
+                }]
+            });
+
+            if (!originalProduct) {
+                return {
+                    success: false,
+                    message: 'Không tìm thấy sản phẩm'
+                };
+            }
+
+            // Debug log sản phẩm gốc
+            console.log('🔍 Original product found:', {
+                id: originalProduct.id,
+                name: originalProduct.name,
+                price: originalProduct.price,
+                rating: originalProduct.rating,
+                categoryId: originalProduct.categoryId,
+                category: originalProduct.category
+            });
+
+            // Tìm các sản phẩm tương tự dựa trên:
+            // 1. Cùng category (ưu tiên cao nhất)
+            // 2. Cùng khoảng giá (trong vòng 20% giá trị)
+            // 3. Cùng khoảng rating (trong vòng 0.5 sao)
+            // 4. Loại trừ sản phẩm hiện tại
+            const originalPrice = parseFloat(originalProduct.price);
+            
+            // Validate price
+            if (isNaN(originalPrice) || originalPrice <= 0) {
+                return {
+                    success: false,
+                    message: 'Giá sản phẩm không hợp lệ'
+                };
+            }
+            
+            const priceRange = originalPrice * 0.2; // 20% giá trị
+            const minPrice = originalPrice - priceRange;
+            const maxPrice = originalPrice + priceRange;
+            
+            // Xử lý rating an toàn
+            const originalRating = originalProduct.rating;
+            let minRating, maxRating;
+            
+            // Chỉ tạo khoảng rating nếu có rating hợp lệ
+            const ratingNum = parseFloat(originalRating);
+            if (originalRating !== null && 
+                originalRating !== undefined && 
+                !isNaN(ratingNum) && 
+                ratingNum > 0 && 
+                ratingNum <= 5) {
+                minRating = Math.max(0, ratingNum - 0.5);
+                maxRating = Math.min(5, ratingNum + 0.5);
+            } else {
+                minRating = null;
+                maxRating = null;
+            }
+
+            // Debug log
+            console.log('🔍 Similar products debug:', {
+                productId,
+                originalProduct: {
+                    id: originalProduct.id,
+                    name: originalProduct.name,
+                    price: originalProduct.price,
+                    parsedPrice: originalPrice,
+                    rating: originalProduct.rating,
+                    categoryId: originalProduct.categoryId
+                },
+                calculatedValues: {
+                    originalRating,
+                    minPrice,
+                    maxPrice,
+                    minRating,
+                    maxRating,
+                    hasValidRating: minRating !== null && maxRating !== null
+                }
+            });
+
+            // Xây dựng điều kiện WHERE an toàn
+            const whereConditions = [
+                // Ưu tiên 1: Cùng category
+                {
+                    categoryId: originalProduct.categoryId
+                },
+                // Ưu tiên 2: Cùng khoảng giá
+                {
+                    price: {
+                        [Op.between]: [minPrice, maxPrice]
+                    }
+                }
+            ];
+
+            // Chỉ thêm điều kiện rating nếu có rating hợp lệ
+            if (minRating !== null && maxRating !== null) {
+                whereConditions.push({
+                    rating: {
+                        [Op.between]: [minRating, maxRating]
+                    }
+                });
+            }
+
+            console.log('🔍 Where conditions:', JSON.stringify(whereConditions, null, 2));
+
+            const similarProducts = await Product.findAll({
+                where: {
+                    id: {
+                        [Op.ne]: productId // Loại trừ sản phẩm hiện tại
+                    },
+                    isActive: true,
+                    [Op.or]: whereConditions
+                },
+                include: [{
+                    model: Category,
+                    as: 'category',
+                    attributes: ['id', 'name', 'description']
+                }],
+                order: [
+                    // Sắp xếp đơn giản: category -> views -> createdAt
+                    ['categoryId', 'ASC'],
+                    ['views', 'DESC'], // Sắp xếp theo lượt xem giảm dần
+                    ['createdAt', 'DESC'] // Sắp xếp theo thời gian tạo giảm dần
+                ],
+                limit: parseInt(limit),
+                attributes: {
+                    exclude: ['createdAt', 'updatedAt']
+                }
+            });
+
+            // Nếu không đủ sản phẩm tương tự, lấy thêm sản phẩm ngẫu nhiên
+            if (similarProducts.length < limit) {
+                const remainingLimit = limit - similarProducts.length;
+                const existingIds = similarProducts.map(p => p.id);
+                existingIds.push(productId); // Thêm sản phẩm gốc vào danh sách loại trừ
+
+                const additionalProducts = await Product.findAll({
+                    where: {
+                        id: {
+                            [Op.notIn]: existingIds
+                        },
+                        isActive: true
+                    },
+                    include: [{
+                        model: Category,
+                        as: 'category',
+                        attributes: ['id', 'name', 'description']
+                    }],
+                    order: [
+                        ['views', 'DESC'],
+                        [require('sequelize').fn('RAND')] // Sắp xếp ngẫu nhiên
+                    ],
+                    limit: remainingLimit,
+                    attributes: {
+                        exclude: ['createdAt', 'updatedAt']
+                    }
+                });
+
+                similarProducts.push(...additionalProducts);
+            }
+
+            return {
+                success: true,
+                data: {
+                    originalProduct: {
+                        id: originalProduct.id,
+                        name: originalProduct.name,
+                        price: originalPrice,
+                        rating: originalRating,
+                        category: originalProduct.category
+                    },
+                    similarProducts: similarProducts.map(product => ({
+                        id: product.id,
+                        name: product.name,
+                        description: product.description,
+                        price: product.price,
+                        imageUrl: product.imageUrl,
+                        stock: product.stock,
+                        rating: product.rating,
+                        views: product.views,
+                        discount: product.discount,
+                        status: product.status,
+                        category: product.category
+                    })),
+                    totalFound: similarProducts.length,
+                    criteria: {
+                        categoryId: originalProduct.categoryId,
+                        priceRange: {
+                            min: minPrice,
+                            max: maxPrice,
+                            original: originalPrice
+                        },
+                        ratingRange: minRating !== null && maxRating !== null ? {
+                            min: minRating,
+                            max: maxRating,
+                            original: originalRating
+                        } : {
+                            min: null,
+                            max: null,
+                            original: originalRating,
+                            note: 'No valid rating range calculated'
+                        }
+                    }
+                }
+            };
+        } catch (error) {
+            console.error('Error in ProductService.getSimilarProducts:', error);
+            return {
+                success: false,
+                message: 'Lỗi khi lấy danh sách sản phẩm tương tự',
                 error: error.message
             };
         }

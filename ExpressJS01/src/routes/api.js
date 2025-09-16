@@ -915,6 +915,93 @@ router.get('/products/:id', productController.getProductById);
 
 /**
  * @swagger
+ * /v1/api/products/{id}/similar:
+ *   get:
+ *     summary: Lấy danh sách sản phẩm tương tự
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID sản phẩm gốc
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 20
+ *           default: 4
+ *         description: Số lượng sản phẩm tương tự (tối đa 20)
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách sản phẩm tương tự thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     originalProduct:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         name:
+ *                           type: string
+ *                         price:
+ *                           type: number
+ *                         rating:
+ *                           type: number
+ *                         category:
+ *                           $ref: '#/components/schemas/Category'
+ *                     similarProducts:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Product'
+ *                     totalFound:
+ *                       type: integer
+ *                       description: Số lượng sản phẩm tương tự tìm thấy
+ *                     criteria:
+ *                       type: object
+ *                       properties:
+ *                         categoryId:
+ *                           type: integer
+ *                         priceRange:
+ *                           type: object
+ *                           properties:
+ *                             min:
+ *                               type: number
+ *                             max:
+ *                               type: number
+ *                             original:
+ *                               type: number
+ *                         ratingRange:
+ *                           type: object
+ *                           properties:
+ *                             min:
+ *                               type: number
+ *                             max:
+ *                               type: number
+ *                             original:
+ *                               type: number
+ *       400:
+ *         description: ID sản phẩm không hợp lệ hoặc tham số không hợp lệ
+ *       404:
+ *         description: Không tìm thấy sản phẩm
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/products/:id/similar', productController.getSimilarProducts);
+
+/**
+ * @swagger
  * /v1/api/categories:
  *   get:
  *     summary: Lấy danh sách danh mục

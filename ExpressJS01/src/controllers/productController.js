@@ -501,6 +501,52 @@ class ProductController {
             });
         }
     }
+
+    /**
+     * Lấy danh sách sản phẩm tương tự
+     * GET /api/products/:id/similar
+     */
+    async getSimilarProducts(req, res) {
+        try {
+            const { id } = req.params;
+            const { limit = 4 } = req.query;
+
+            // Validate product ID
+            if (!id || isNaN(parseInt(id))) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID sản phẩm không hợp lệ'
+                });
+            }
+
+            // Validate limit
+            const limitNum = parseInt(limit);
+            if (isNaN(limitNum) || limitNum < 1 || limitNum > 20) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Số lượng sản phẩm tương tự phải từ 1 đến 20'
+                });
+            }
+
+            const result = await productService.getSimilarProducts(parseInt(id), {
+                limit: limitNum
+            });
+
+            if (!result.success) {
+                const statusCode = result.message.includes('Không tìm thấy') ? 404 : 500;
+                return res.status(statusCode).json(result);
+            }
+
+            res.json(result);
+        } catch (error) {
+            console.error('Error in ProductController.getSimilarProducts:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi lấy danh sách sản phẩm tương tự',
+                error: error.message
+            });
+        }
+    }
 }
 
 module.exports = new ProductController();
